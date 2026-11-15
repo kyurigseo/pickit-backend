@@ -9,3 +9,7 @@ spring:
     open-in-view: false
     hibernate:
       ddl-auto: create-drop
+
+pickit:
+  cors:
+    allowed-origins: http://localhost:5173,http://localhost:3000
