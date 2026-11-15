@@ -1,6 +1,6 @@
 package com.pickit.backend.popup.service;
 
-import com.pickit.backend.category.repository.CategoryRepository;
+import com.pickit.backend.category.service.CategoryService;
 import com.pickit.backend.popup.dto.request.NearbyPopupRequest;
 import com.pickit.backend.popup.dto.request.PopupListFilter;
 import com.pickit.backend.popup.dto.response.NearbyPopupItemResponse;
@@ -14,7 +14,6 @@ import com.pickit.backend.popup.entity.PopupRegion;
 import com.pickit.backend.popup.entity.PopupStatus;
 import com.pickit.backend.popup.repository.PopupRepository;
 import com.pickit.backend.popup.repository.PopupSpecifications;
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Arrays;
@@ -23,7 +22,6 @@ import java.util.Map;
 import java.util.Set;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,13 +34,13 @@ public class PopupService {
     private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
 
     private final PopupRepository popupRepository;
-    private final CategoryRepository categoryRepository;
+    private final CategoryService categoryService;
     private final PopupLikeService popupLikeService;
 
-    public PopupService(PopupRepository popupRepository, CategoryRepository categoryRepository,
+    public PopupService(PopupRepository popupRepository, CategoryService categoryService,
             PopupLikeService popupLikeService) {
         this.popupRepository = popupRepository;
-        this.categoryRepository = categoryRepository;
+        this.categoryService = categoryService;
         this.popupLikeService = popupLikeService;
     }
 
@@ -85,12 +83,9 @@ public class PopupService {
 
     public NearbyPopupResponse getNearbyPopups(NearbyPopupRequest request) {
         LocalDate today = LocalDate.now(SEOUL);
-        // MySQL의 구면 거리 함수는 경도 범위 (-180, 180]을 사용한다.
-        BigDecimal longitude = request.lng().compareTo(BigDecimal.valueOf(-180)) == 0
-                ? BigDecimal.valueOf(180) : request.lng();
 
         List<NearbyPopupItemResponse> items = popupRepository.findNearbyPopups(
-                request.lat(), longitude, request.radiusMeters()
+                request.lat(), request.lng(), request.radiusMeters()
         ).stream().map(popup -> new NearbyPopupItemResponse(
                 popup.getPopupId(),
                 popup.getName(),
@@ -137,19 +132,8 @@ public class PopupService {
                 Arrays.stream(PopupRegion.values())
                         .map(region -> new PopupFilterOptionsResponse.RegionOption(region, region.getLabel()))
                         .toList(),
-                categoryRepository.findAll(Sort.by("name", "categoryId")).stream()
-                        .map(category -> new PopupFilterOptionsResponse.CategoryOption(
-                                category.getCategoryId(), category.getName(), categoryLabel(category.getName())
-                        ))
-                        .toList()
+                // 카테고리는 /api/categories와 같은 목록·이름을 사용한다.
+                categoryService.getCategories()
         );
-    }
-
-    private String categoryLabel(String name) {
-        return switch (name) {
-            case "K-POP", "K_POP" -> "K_POP";
-            case "키즈" -> "키즈/반려동물";
-            default -> name;
-        };
     }
 }
