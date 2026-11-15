@@ -11,6 +11,7 @@ public record PopupListItemResponse(
         LocalDate startDate,
         LocalDate endDate,
         PopupStatus status,
-        boolean isLiked
+        boolean isLiked,
+        long likeCount
 ) {
 }

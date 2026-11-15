@@ -1,6 +1,7 @@
 package com.pickit.backend.popup.repository;
 
 import com.pickit.backend.popup.entity.PopupLike;
+import java.util.Collection;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -15,6 +16,14 @@ public interface PopupLikeRepository extends JpaRepository<PopupLike, Long> {
 
     @Query("select l.popup.popupId from PopupLike l where l.userId = :userId")
     List<Long> findPopupIdsByUserId(@Param("userId") Long userId);
+
+    @Query("""
+            select l.popup.popupId as popupId, count(l) as likeCount
+            from PopupLike l
+            where l.popup.popupId in :popupIds
+            group by l.popup.popupId
+            """)
+    List<PopupLikeCount> countByPopupIds(@Param("popupIds") Collection<Long> popupIds);
 
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("delete from PopupLike l where l.userId = :userId and l.popup.popupId = :popupId")

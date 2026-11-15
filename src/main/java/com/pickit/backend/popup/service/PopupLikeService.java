@@ -3,13 +3,17 @@ package com.pickit.backend.popup.service;
 import com.pickit.backend.popup.dto.response.PopupLikeResponse;
 import com.pickit.backend.popup.entity.Popup;
 import com.pickit.backend.popup.entity.PopupLike;
+import com.pickit.backend.popup.repository.PopupLikeCount;
 import com.pickit.backend.popup.repository.PopupLikeRepository;
 import com.pickit.backend.popup.repository.PopupRepository;
 import com.pickit.backend.verification.repository.VerificationUserStore;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
+import java.util.Collection;
+import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -56,6 +60,15 @@ public class PopupLikeService {
 
     public Set<Long> findLikedPopupIds(Long userId) {
         return Set.copyOf(popupLikeRepository.findPopupIdsByUserId(userId));
+    }
+
+    /** 팝업 ID별 찜 수를 한 번의 쿼리로 센다. 찜이 없는 팝업은 결과에 없으므로 0으로 본다. */
+    public Map<Long, Long> countLikes(Collection<Long> popupIds) {
+        if (popupIds.isEmpty()) {
+            return Map.of();
+        }
+        return popupLikeRepository.countByPopupIds(popupIds).stream()
+                .collect(Collectors.toMap(PopupLikeCount::getPopupId, PopupLikeCount::getLikeCount));
     }
 
     private Popup findPopup(Long popupId) {

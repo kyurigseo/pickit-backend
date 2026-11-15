@@ -15,6 +15,7 @@ public record PopupVerificationItemResponse(
         LocalDate startDate,
         LocalDate endDate,
         PopupStatus popupStatus,
+        long likeCount,
         double distanceMeters,
         boolean isVerified,
         PresenceStatus presenceStatus,
