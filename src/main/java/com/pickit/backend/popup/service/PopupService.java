@@ -62,26 +62,10 @@ public class PopupService {
         Map<Long, Long> likeCounts = popupLikeService.countLikes(
                 popups.map(Popup::getPopupId).getContent());
 
-        Page<PopupListItemResponse> items = popups.map(popup -> new PopupListItemResponse(
-                popup.getPopupId(),
-                popup.getName(),
-                popup.getThumbnailUrl(),
-                popup.getDistrict(),
-                popup.getStartDate(),
-                popup.getEndDate(),
-                PopupStatus.fromDates(popup.getStartDate(), popup.getEndDate(), today),
-                likes.contains(popup.getPopupId()),
+        return PopupListResponse.from(popups.map(popup -> PopupListItemResponse.of(
+                popup, today, likes.contains(popup.getPopupId()),
                 likeCounts.getOrDefault(popup.getPopupId(), 0L)
-        ));
-
-        return new PopupListResponse(
-                items.getContent(),
-                items.getNumber(),
-                items.getSize(),
-                items.getTotalElements(),
-                items.getTotalPages(),
-                items.hasNext()
-        );
+        )));
     }
 
     public NearbyPopupResponse getNearbyPopups(NearbyPopupRequest request) {
