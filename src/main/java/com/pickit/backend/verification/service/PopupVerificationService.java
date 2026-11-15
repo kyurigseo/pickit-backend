@@ -6,6 +6,7 @@ import com.pickit.backend.popup.entity.Popup;
 import com.pickit.backend.popup.entity.PopupStatus;
 import com.pickit.backend.popup.repository.NearbyPopupProjection;
 import com.pickit.backend.popup.repository.PopupRepository;
+import com.pickit.backend.popup.service.PopupLikeService;
 import com.pickit.backend.popup.service.PopupService;
 import com.pickit.backend.verification.dto.request.LocationRequest;
 import com.pickit.backend.verification.dto.response.PopupVerificationItemResponse;
@@ -40,15 +41,17 @@ public class PopupVerificationService {
     private final VerificationUserStore userStore;
     private final PopupRepository popupRepository;
     private final PopupService popupService;
+    private final PopupLikeService popupLikeService;
     private final Clock clock;
 
     public PopupVerificationService(PopupVerificationRepository verificationRepository,
             VerificationUserStore userStore, PopupRepository popupRepository, PopupService popupService,
-            @Qualifier("verificationClock") Clock clock) {
+            PopupLikeService popupLikeService, @Qualifier("verificationClock") Clock clock) {
         this.verificationRepository = verificationRepository;
         this.userStore = userStore;
         this.popupRepository = popupRepository;
         this.popupService = popupService;
+        this.popupLikeService = popupLikeService;
         this.clock = clock;
     }
 
@@ -115,7 +118,7 @@ public class PopupVerificationService {
     public PopupVerificationItemResponse getPresence(Long userId, Long popupId) {
         LocalDateTime now = databaseTime(clock.instant());
         return verificationRepository.findFirstByUserIdAndPopup_PopupIdOrderByVerificationIdDesc(userId, popupId)
-                .map(verification -> toItem(verification, now))
+                .map(verification -> toItem(verification, now, popupLikeService.countLikes(List.of(popupId))))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "인증 기록이 없습니다."));
     }
 
@@ -170,8 +173,11 @@ public class PopupVerificationService {
 
     private VerificationResponse snapshot(List<PopupVerification> verifications, LocalDateTime now,
             boolean includeInactive) {
+        Map<Long, Long> likeCounts = popupLikeService.countLikes(verifications.stream()
+                .map(verification -> verification.getPopup().getPopupId())
+                .toList());
         List<PopupVerificationItemResponse> items = verifications.stream()
-                .map(verification -> toItem(verification, now))
+                .map(verification -> toItem(verification, now, likeCounts))
                 .filter(item -> includeInactive || item.isVerified())
                 .sorted(Comparator.comparing(PopupVerificationItemResponse::isVerified).reversed()
                         .thenComparingDouble(PopupVerificationItemResponse::distanceMeters)
@@ -182,7 +188,8 @@ public class PopupVerificationService {
                 VerificationPolicy.RADIUS_METERS, VerificationPolicy.UPDATE_INTERVAL.toSeconds(), offset(now));
     }
 
-    private PopupVerificationItemResponse toItem(PopupVerification verification, LocalDateTime now) {
+    private PopupVerificationItemResponse toItem(PopupVerification verification, LocalDateTime now,
+            Map<Long, Long> likeCounts) {
         Popup popup = verification.getPopup();
         PresenceStatus status;
         if (verification.getLeftAt() != null) {
@@ -198,6 +205,7 @@ public class PopupVerificationService {
                 popup.getName(), popup.getThumbnailUrl(), popup.getDistrict(), popup.getAddress(),
                 popup.getStartDate(), popup.getEndDate(),
                 PopupStatus.fromDates(popup.getStartDate(), popup.getEndDate(), now.toLocalDate()),
+                likeCounts.getOrDefault(popup.getPopupId(), 0L),
                 GeoDistance.meters(lat, lng, popup.getLatitude(), popup.getLongitude()),
                 status == PresenceStatus.LIVE, status,
                 offset(verification.getVerifiedAt()), offset(verification.getExpiredAt()),

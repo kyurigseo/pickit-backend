@@ -19,6 +19,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -36,10 +37,13 @@ public class PopupService {
 
     private final PopupRepository popupRepository;
     private final CategoryRepository categoryRepository;
+    private final PopupLikeService popupLikeService;
 
-    public PopupService(PopupRepository popupRepository, CategoryRepository categoryRepository) {
+    public PopupService(PopupRepository popupRepository, CategoryRepository categoryRepository,
+            PopupLikeService popupLikeService) {
         this.popupRepository = popupRepository;
         this.categoryRepository = categoryRepository;
+        this.popupLikeService = popupLikeService;
     }
 
     /** likedPopupIds는 회원이 찜한 팝업 ID 목록이며, 찜한 팝업을 먼저 정렬하고 isLiked를 표시한다. */
@@ -54,6 +58,9 @@ public class PopupService {
                 PopupSpecifications.filteredAndOrdered(filter, today, likes), pageable
         );
 
+        Map<Long, Long> likeCounts = popupLikeService.countLikes(
+                popups.map(Popup::getPopupId).getContent());
+
         Page<PopupListItemResponse> items = popups.map(popup -> new PopupListItemResponse(
                 popup.getPopupId(),
                 popup.getName(),
@@ -62,7 +69,8 @@ public class PopupService {
                 popup.getStartDate(),
                 popup.getEndDate(),
                 PopupStatus.fromDates(popup.getStartDate(), popup.getEndDate(), today),
-                likes.contains(popup.getPopupId())
+                likes.contains(popup.getPopupId()),
+                likeCounts.getOrDefault(popup.getPopupId(), 0L)
         ));
 
         return new PopupListResponse(
