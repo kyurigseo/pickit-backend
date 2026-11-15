@@ -2,11 +2,14 @@ package com.pickit.backend.popup.repository;
 
 import com.pickit.backend.popup.dto.request.PopupListFilter;
 import com.pickit.backend.popup.entity.Popup;
+import com.pickit.backend.popup.entity.PopupLike;
 import com.pickit.backend.popup.entity.PopupRegion;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Order;
 import jakarta.persistence.criteria.Path;
 import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.Subquery;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -88,6 +91,12 @@ public final class PopupSpecifications {
                         .when(upcoming, 1)
                         .otherwise(2);
                 orders.add(builder.asc(statusRank));
+                // 같은 진행 상태 안에서는 전체 회원의 찜 수가 많은 팝업을 먼저 보여준다.
+                Subquery<Long> likeCount = query.subquery(Long.class);
+                Root<PopupLike> like = likeCount.from(PopupLike.class);
+                likeCount.select(builder.count(like))
+                        .where(builder.equal(like.get("popup").get("popupId"), root.get("popupId")));
+                orders.add(builder.desc(likeCount));
                 orders.add(builder.desc(startDate));
                 orders.add(builder.desc(root.get("popupId")));
                 query.orderBy(orders);
