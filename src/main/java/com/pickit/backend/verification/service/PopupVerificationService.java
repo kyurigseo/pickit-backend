@@ -72,10 +72,8 @@ public class PopupVerificationService {
         List<PopupVerification> current = verificationRepository.findLatestByUserId(userId);
         rejectOutOfOrder(current, sample);
 
-        BigDecimal queryLongitude = sample.lng().compareTo(BigDecimal.valueOf(-180)) == 0
-                ? BigDecimal.valueOf(180) : sample.lng();
         List<Long> popupIds = popupRepository.findNearbyPopups(
-                sample.lat(), queryLongitude, VerificationPolicy.RADIUS_METERS
+                sample.lat(), sample.lng(), VerificationPolicy.RADIUS_METERS
         ).stream().map(NearbyPopupProjection::getPopupId).toList();
         if (popupIds.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "인증 반경 안에 팝업이 없습니다.");

@@ -23,7 +23,7 @@ public interface PopupRepository extends JpaRepository<Popup, Long>, JpaSpecific
                        p.start_date AS startDate,
                        p.end_date AS endDate,
                        ST_Distance_Sphere(
-                           POINT(CASE WHEN p.longitude = -180 THEN 180 ELSE p.longitude END, p.latitude),
+                           POINT(p.longitude, p.latitude),
                            POINT(:longitude, :latitude)
                        ) AS distanceMeters
                 FROM popups p
