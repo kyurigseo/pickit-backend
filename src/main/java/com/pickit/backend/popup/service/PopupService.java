@@ -44,7 +44,10 @@ public class PopupService {
         this.popupLikeService = popupLikeService;
     }
 
-    /** likedPopupIds는 회원이 찜한 팝업 ID 목록이며, 찜한 팝업을 먼저 정렬하고 isLiked를 표시한다. */
+    /**
+     * likedPopupIds는 회원이 찜한 팝업 ID 목록이다.
+     * 정렬은 내가 찜한 팝업 → 진행 중·진행 전·진행 완료 → 같은 상태 안에서 찜 수 많은 순 → 시작일 최신순이다.
+     */
     public PopupListResponse getPopups(
             int page, int size, PopupListFilter filter, Set<Long> likedPopupIds
     ) {
