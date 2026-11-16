@@ -2,7 +2,6 @@ package com.pickit.backend.popup.service;
 
 import com.pickit.backend.popup.dto.response.PopupLikeResponse;
 import com.pickit.backend.popup.dto.response.PopupListItemResponse;
-import com.pickit.backend.popup.dto.response.PopupListResponse;
 import com.pickit.backend.popup.entity.Popup;
 import com.pickit.backend.popup.entity.PopupLike;
 import com.pickit.backend.popup.repository.PopupLikeCount;
@@ -14,11 +13,10 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -63,14 +61,16 @@ public class PopupLikeService {
         return new PopupLikeResponse(popupId, false, popupLikeRepository.countByPopup_PopupId(popupId));
     }
 
-    /** 찜 탭의 찜한 팝업 목록. 카드 형식과 페이지 정보는 팝업 목록과 같다. */
-    public PopupListResponse getLikedPopups(Long userId, int page, int size) {
+    /** 찜 탭의 찜한 팝업 전체. 카드 형식은 팝업 목록과 같다. */
+    public List<PopupListItemResponse> getLikedPopups(Long userId) {
         userStore.requireUser(userId, false);
         LocalDate today = LocalDate.now(SEOUL);
-        Page<PopupLike> likes = popupLikeRepository.findLikedByUserId(userId, today, PageRequest.of(page, size));
-        Map<Long, Long> likeCounts = countLikes(likes.map(like -> like.getPopup().getPopupId()).getContent());
-        return PopupListResponse.from(likes.map(like -> PopupListItemResponse.of(
-                like.getPopup(), today, true, likeCounts.getOrDefault(like.getPopup().getPopupId(), 0L))));
+        List<PopupLike> likes = popupLikeRepository.findLikedByUserId(userId, today);
+        Map<Long, Long> likeCounts = countLikes(likes.stream().map(like -> like.getPopup().getPopupId()).toList());
+        return likes.stream()
+                .map(like -> PopupListItemResponse.of(like.getPopup(), today, true,
+                        likeCounts.getOrDefault(like.getPopup().getPopupId(), 0L)))
+                .toList();
     }
 
     public Set<Long> findLikedPopupIds(Long userId) {
