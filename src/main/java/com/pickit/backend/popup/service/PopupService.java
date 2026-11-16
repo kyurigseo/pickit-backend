@@ -8,7 +8,6 @@ import com.pickit.backend.popup.dto.response.NearbyPopupResponse;
 import com.pickit.backend.popup.dto.response.PopupDetailResponse;
 import com.pickit.backend.popup.dto.response.PopupFilterOptionsResponse;
 import com.pickit.backend.popup.dto.response.PopupListItemResponse;
-import com.pickit.backend.popup.dto.response.PopupListResponse;
 import com.pickit.backend.popup.entity.Popup;
 import com.pickit.backend.popup.entity.PopupRegion;
 import com.pickit.backend.popup.entity.PopupStatus;
@@ -20,8 +19,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -48,24 +45,17 @@ public class PopupService {
      * likedPopupIds는 회원이 찜한 팝업 ID 목록이다.
      * 정렬은 내가 찜한 팝업 → 진행 중·진행 전·진행 완료 → 같은 상태 안에서 찜 수 많은 순 → 시작일 최신순이다.
      */
-    public PopupListResponse getPopups(
-            int page, int size, PopupListFilter filter, Set<Long> likedPopupIds
-    ) {
+    public List<PopupListItemResponse> getPopups(PopupListFilter filter, Set<Long> likedPopupIds) {
         LocalDate today = LocalDate.now(SEOUL);
         Set<Long> likes = likedPopupIds == null ? Set.of() : Set.copyOf(likedPopupIds);
-        PageRequest pageable = PageRequest.of(page, size);
 
-        Page<Popup> popups = popupRepository.findAll(
-                PopupSpecifications.filteredAndOrdered(filter, today, likes), pageable
-        );
+        List<Popup> popups = popupRepository.findAll(PopupSpecifications.filteredAndOrdered(filter, today, likes));
+        Map<Long, Long> likeCounts = popupLikeService.countLikes(popups.stream().map(Popup::getPopupId).toList());
 
-        Map<Long, Long> likeCounts = popupLikeService.countLikes(
-                popups.map(Popup::getPopupId).getContent());
-
-        return PopupListResponse.from(popups.map(popup -> PopupListItemResponse.of(
-                popup, today, likes.contains(popup.getPopupId()),
-                likeCounts.getOrDefault(popup.getPopupId(), 0L)
-        )));
+        return popups.stream()
+                .map(popup -> PopupListItemResponse.of(popup, today, likes.contains(popup.getPopupId()),
+                        likeCounts.getOrDefault(popup.getPopupId(), 0L)))
+                .toList();
     }
 
     public NearbyPopupResponse getNearbyPopups(NearbyPopupRequest request) {
