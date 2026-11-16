@@ -2,6 +2,7 @@ package com.pickit.backend.category.controller;
 
 import com.pickit.backend.category.dto.response.CategoryResponse;
 import com.pickit.backend.category.service.CategoryService;
+import com.pickit.backend.common.ApiResponse;
 import java.security.Principal;
 import java.util.List;
 import org.springframework.http.HttpStatus;
@@ -19,10 +20,10 @@ public class CategoryController {
     }
 
     @GetMapping("/api/categories")
-    public List<CategoryResponse> getCategories(Principal principal) {
+    public ApiResponse<List<CategoryResponse>> getCategories(Principal principal) {
         if (principal == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
         }
-        return categoryService.getCategories();
+        return ApiResponse.ok(categoryService.getCategories());
     }
 }

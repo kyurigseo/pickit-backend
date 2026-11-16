@@ -1,5 +1,6 @@
 package com.pickit.backend.popup.controller;
 
+import com.pickit.backend.common.ApiResponse;
 import com.pickit.backend.popup.dto.response.PopupListItemResponse;
 import com.pickit.backend.popup.service.PopupLikeService;
 import com.pickit.backend.verification.auth.VerificationUserResolver;
@@ -20,7 +21,7 @@ public class PopupLikeController {
     }
 
     @GetMapping("/api/me/liked-popups")
-    public List<PopupListItemResponse> getLikedPopups(Principal principal) {
-        return popupLikeService.getLikedPopups(userResolver.requireUserId(principal));
+    public ApiResponse<List<PopupListItemResponse>> getLikedPopups(Principal principal) {
+        return ApiResponse.ok(popupLikeService.getLikedPopups(userResolver.requireUserId(principal)));
     }
 }

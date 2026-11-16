@@ -1,5 +1,6 @@
 package com.pickit.backend.popup.controller;
 
+import com.pickit.backend.common.ApiResponse;
 import com.pickit.backend.popup.dto.request.NearbyPopupRequest;
 import com.pickit.backend.popup.dto.request.PopupListFilter;
 import com.pickit.backend.popup.dto.response.NearbyPopupResponse;
@@ -46,7 +47,7 @@ public class PopupController {
     }
 
     @GetMapping
-    public List<PopupListItemResponse> getPopups(
+    public ApiResponse<List<PopupListItemResponse>> getPopups(
             Principal principal,
             @RequestParam(name = "q", required = false) @Size(max = 255) String q,
             @RequestParam(name = "statuses", required = false) Set<@NotNull PopupStatus> statuses,
@@ -55,48 +56,48 @@ public class PopupController {
     ) {
         // 찜 여부와 찜 우선 정렬에는 서버가 확인한 회원 ID가 필요하다.
         Long userId = userResolver.requireUserId(principal);
-        return popupService.getPopups(new PopupListFilter(q, statuses, regions, categoryIds),
-                popupLikeService.findLikedPopupIds(userId));
+        return ApiResponse.ok(popupService.getPopups(new PopupListFilter(q, statuses, regions, categoryIds),
+                popupLikeService.findLikedPopupIds(userId)));
     }
 
     @GetMapping("/nearby")
-    public NearbyPopupResponse getNearbyPopups(
+    public ApiResponse<NearbyPopupResponse> getNearbyPopups(
             Principal principal,
             @Valid @ModelAttribute NearbyPopupRequest request
     ) {
         requireLogin(principal);
-        return popupService.getNearbyPopups(request);
+        return ApiResponse.ok(popupService.getNearbyPopups(request));
     }
 
     @GetMapping("/{popupId}")
-    public PopupDetailResponse getPopupDetail(
+    public ApiResponse<PopupDetailResponse> getPopupDetail(
             Principal principal,
             @PathVariable("popupId") @Positive Long popupId
     ) {
         requireLogin(principal);
-        return popupService.getPopupDetail(popupId);
+        return ApiResponse.ok(popupService.getPopupDetail(popupId));
     }
 
     @PutMapping("/{popupId}/like")
-    public PopupLikeResponse likePopup(
+    public ApiResponse<PopupLikeResponse> likePopup(
             Principal principal,
             @PathVariable("popupId") @Positive Long popupId
     ) {
-        return popupLikeService.like(userResolver.requireUserId(principal), popupId);
+        return ApiResponse.ok(popupLikeService.like(userResolver.requireUserId(principal), popupId));
     }
 
     @DeleteMapping("/{popupId}/like")
-    public PopupLikeResponse unlikePopup(
+    public ApiResponse<PopupLikeResponse> unlikePopup(
             Principal principal,
             @PathVariable("popupId") @Positive Long popupId
     ) {
-        return popupLikeService.unlike(userResolver.requireUserId(principal), popupId);
+        return ApiResponse.ok(popupLikeService.unlike(userResolver.requireUserId(principal), popupId));
     }
 
     @GetMapping("/filters")
-    public PopupFilterOptionsResponse getFilterOptions(Principal principal) {
+    public ApiResponse<PopupFilterOptionsResponse> getFilterOptions(Principal principal) {
         requireLogin(principal);
-        return popupService.getFilterOptions();
+        return ApiResponse.ok(popupService.getFilterOptions());
     }
 
     private void requireLogin(Principal principal) {

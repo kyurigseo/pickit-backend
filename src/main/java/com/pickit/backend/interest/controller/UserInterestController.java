@@ -1,5 +1,6 @@
 package com.pickit.backend.interest.controller;
 
+import com.pickit.backend.common.ApiResponse;
 import com.pickit.backend.interest.dto.request.InterestUpdateRequest;
 import com.pickit.backend.interest.dto.response.InterestResponse;
 import com.pickit.backend.interest.service.UserInterestService;
@@ -24,13 +25,14 @@ public class UserInterestController {
     }
 
     @GetMapping("/api/me/interests")
-    public InterestResponse getInterests(Principal principal) {
-        return userInterestService.getInterests(userResolver.requireUserId(principal));
+    public ApiResponse<InterestResponse> getInterests(Principal principal) {
+        return ApiResponse.ok(userInterestService.getInterests(userResolver.requireUserId(principal)));
     }
 
     @PutMapping("/api/me/interests")
-    public InterestResponse updateInterests(Principal principal,
+    public ApiResponse<InterestResponse> updateInterests(Principal principal,
             @Valid @RequestBody InterestUpdateRequest request) {
-        return userInterestService.updateInterests(userResolver.requireUserId(principal), request.categoryIds());
+        return ApiResponse.ok(
+                userInterestService.updateInterests(userResolver.requireUserId(principal), request.categoryIds()));
     }
 }

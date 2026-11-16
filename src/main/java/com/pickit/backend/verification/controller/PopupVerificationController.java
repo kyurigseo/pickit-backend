@@ -1,5 +1,6 @@
 package com.pickit.backend.verification.controller;
 
+import com.pickit.backend.common.ApiResponse;
 import com.pickit.backend.popup.dto.response.NearbyPopupResponse;
 import com.pickit.backend.verification.auth.VerificationUserResolver;
 import com.pickit.backend.verification.dto.request.LocationRequest;
@@ -28,25 +29,26 @@ public class PopupVerificationController {
     }
 
     @PostMapping("/api/popup-verifications/preview")
-    public NearbyPopupResponse preview(Principal principal, @Valid @RequestBody LocationRequest request) {
-        return verificationService.preview(userResolver.requireUserId(principal), request);
+    public ApiResponse<NearbyPopupResponse> preview(Principal principal, @Valid @RequestBody LocationRequest request) {
+        return ApiResponse.ok(verificationService.preview(userResolver.requireUserId(principal), request));
     }
 
     @PostMapping("/api/popup-verifications")
-    public VerificationResponse verify(Principal principal, @Valid @RequestBody LocationRequest request) {
-        return verificationService.verify(userResolver.requireUserId(principal), request);
+    public ApiResponse<VerificationResponse> verify(Principal principal, @Valid @RequestBody LocationRequest request) {
+        return ApiResponse.ok(verificationService.verify(userResolver.requireUserId(principal), request));
     }
 
     @PatchMapping("/api/me/location")
-    public VerificationResponse updateLocation(Principal principal, @Valid @RequestBody LocationRequest request) {
-        return verificationService.updateLocation(userResolver.requireUserId(principal), request);
+    public ApiResponse<VerificationResponse> updateLocation(Principal principal,
+            @Valid @RequestBody LocationRequest request) {
+        return ApiResponse.ok(verificationService.updateLocation(userResolver.requireUserId(principal), request));
     }
 
     @GetMapping("/api/me/popup-verifications")
-    public VerificationResponse getCurrent(Principal principal,
+    public ApiResponse<VerificationResponse> getCurrent(Principal principal,
             @RequestParam(name = "includeInactive", defaultValue = "false") boolean includeInactive,
             HttpServletResponse response) {
         response.setHeader("Cache-Control", "no-store");
-        return verificationService.getCurrent(userResolver.requireUserId(principal), includeInactive);
+        return ApiResponse.ok(verificationService.getCurrent(userResolver.requireUserId(principal), includeInactive));
     }
 }
