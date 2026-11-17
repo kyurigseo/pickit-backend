@@ -1,6 +1,8 @@
 package com.pickit.backend.auth.controller;
 
+import com.pickit.backend.auth.dto.request.LoginRequest;
 import com.pickit.backend.auth.dto.request.SignupRequest;
+import com.pickit.backend.auth.dto.response.LoginResponse;
 import com.pickit.backend.auth.dto.response.SignupResponse;
 import com.pickit.backend.auth.service.AuthService;
 import com.pickit.backend.common.dto.ApiResponse;
@@ -11,7 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/v1/auth")
+@RequestMapping("/api/auth")
 public class AuthController {
 
     private final AuthService authService;
@@ -23,6 +25,12 @@ public class AuthController {
     @PostMapping("/signup")
     public ApiResponse<SignupResponse> signup(@Valid @RequestBody SignupRequest request) {
         SignupResponse response = authService.signup(request);
+        return ApiResponse.success(response);
+    }
+
+    @PostMapping("/login")
+    public ApiResponse<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
+        LoginResponse response = authService.login(request);
         return ApiResponse.success(response);
     }
 }
