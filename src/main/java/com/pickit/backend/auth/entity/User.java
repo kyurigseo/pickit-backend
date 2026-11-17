@@ -43,6 +43,18 @@ public class User {
         this.username = username;
     }
 
+    public void updateUsername(String username) {
+        this.username = username;
+    }
+
+    public void updateProfileImageUrl(String profileImageUrl) {
+        this.profileImageUrl = profileImageUrl;
+    }
+
+    public void clearProfileImageUrl() {
+        this.profileImageUrl = null;
+    }
+
     public Long getUserId() {
         return userId;
     }
