@@ -51,6 +51,10 @@ public class User {
         this.profileImageUrl = profileImageUrl;
     }
 
+    public void clearProfileImageUrl() {
+        this.profileImageUrl = null;
+    }
+
     public Long getUserId() {
         return userId;
     }

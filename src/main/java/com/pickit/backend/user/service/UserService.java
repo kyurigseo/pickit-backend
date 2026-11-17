@@ -46,4 +46,11 @@ public class UserService {
         user.updateProfileImageUrl(imageUrl);
         return new ProfileImageResponse(imageUrl);
     }
+
+    @Transactional
+    public void deleteProfileImage(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "유저를 찾을 수 없습니다."));
+        user.clearProfileImageUrl();
+    }
 }

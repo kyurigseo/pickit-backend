@@ -7,6 +7,7 @@ import com.pickit.backend.user.dto.response.UserResponse;
 import com.pickit.backend.user.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -45,5 +46,12 @@ public class UserController {
         Long userId = (Long) authentication.getPrincipal();
         ProfileImageResponse response = userService.uploadProfileImage(userId, file);
         return ApiResponse.success(response);
+    }
+
+    @DeleteMapping("/me/profile-image")
+    public ApiResponse<Void> deleteProfileImage(Authentication authentication) {
+        Long userId = (Long) authentication.getPrincipal();
+        userService.deleteProfileImage(userId);
+        return ApiResponse.success(null);
     }
 }
