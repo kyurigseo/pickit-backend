@@ -8,6 +8,7 @@ import com.pickit.backend.interest.repository.UserInterestRepository;
 import com.pickit.backend.popup.entity.Popup;
 import com.pickit.backend.popup.repository.PopupRepository;
 import com.pickit.backend.post.dto.request.CreatePostRequest;
+import com.pickit.backend.post.dto.request.UpdatePostRequest;
 import com.pickit.backend.post.dto.response.PostDetailResponse;
 import com.pickit.backend.post.dto.response.PostListResponse;
 import com.pickit.backend.post.entity.ExchangePost;
@@ -105,7 +106,6 @@ public class PostService {
 
     @Transactional
     public Long createPost(Long userId, CreatePostRequest request) {
-        // 위치 인증 여부 확인
         PopupVerification verification = popupVerificationRepository.findFirstByUserIdAndPopup_PopupIdOrderByVerificationIdDesc(userId, request.popupId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "해당 팝업에 대한 위치 인증이 필요합니다."));
 
@@ -136,5 +136,26 @@ public class PostService {
         }
 
         return exchangePostRepository.save(post).getPostId();
+    }
+
+    @Transactional
+    public Long updatePost(Long userId, Long postId, UpdatePostRequest request) {
+        ExchangePost post = exchangePostRepository.findById(postId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "교환글을 찾을 수 없습니다."));
+
+        if (!post.getUserId().equals(userId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "수정 권한이 없습니다.");
+        }
+
+        post.update(request.wantItemName(), request.preferredLocation(), request.preferredTime(), request.description());
+
+        if (request.imageUrls() != null) {
+            post.getImages().clear();
+            for (int i = 0; i < request.imageUrls().size(); i++) {
+                post.addImage(new PostImage(request.imageUrls().get(i), i));
+            }
+        }
+
+        return post.getPostId();
     }
 }

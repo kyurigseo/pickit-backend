@@ -2,6 +2,7 @@ package com.pickit.backend.post.controller;
 
 import com.pickit.backend.common.dto.ApiResponse;
 import com.pickit.backend.post.dto.request.CreatePostRequest;
+import com.pickit.backend.post.dto.request.UpdatePostRequest;
 import com.pickit.backend.post.dto.response.PostDetailResponse;
 import com.pickit.backend.post.dto.response.PostListResponse;
 import com.pickit.backend.post.service.PostService;
@@ -10,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -71,5 +73,16 @@ public class PostController {
         Long userId = (Long) authentication.getPrincipal();
         Long postId = postService.createPost(userId, request);
         return ApiResponse.success(Map.of("postId", postId));
+    }
+
+    @PatchMapping("/{postId}")
+    public ApiResponse<Map<String, Long>> updatePost(
+            @PathVariable Long postId,
+            @Valid @RequestBody UpdatePostRequest request,
+            Authentication authentication
+    ) {
+        Long userId = (Long) authentication.getPrincipal();
+        Long updatedPostId = postService.updatePost(userId, postId, request);
+        return ApiResponse.success(Map.of("postId", updatedPostId));
     }
 }
