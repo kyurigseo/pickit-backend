@@ -5,6 +5,7 @@ import com.pickit.backend.auth.repository.UserRepository;
 import com.pickit.backend.common.service.FileService;
 import com.pickit.backend.user.dto.request.UpdateProfileRequest;
 import com.pickit.backend.user.dto.response.ProfileImageResponse;
+import com.pickit.backend.user.dto.response.UserProfileResponse;
 import com.pickit.backend.user.dto.response.UserResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -28,6 +29,12 @@ public class UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "유저를 찾을 수 없습니다."));
         return UserResponse.from(user);
+    }
+
+    public UserProfileResponse getUserProfile(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "유저를 찾을 수 없습니다."));
+        return UserProfileResponse.from(user);
     }
 
     @Transactional
