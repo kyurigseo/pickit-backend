@@ -2,9 +2,11 @@ package com.pickit.backend.auth.service;
 
 import com.pickit.backend.auth.dto.request.GoogleLoginRequest;
 import com.pickit.backend.auth.dto.request.LoginRequest;
+import com.pickit.backend.auth.dto.request.RefreshTokenRequest;
 import com.pickit.backend.auth.dto.request.SignupRequest;
 import com.pickit.backend.auth.dto.response.GoogleLoginResponse;
 import com.pickit.backend.auth.dto.response.LoginResponse;
+import com.pickit.backend.auth.dto.response.RefreshTokenResponse;
 import com.pickit.backend.auth.dto.response.SignupResponse;
 import com.pickit.backend.auth.entity.AuthAccount;
 import com.pickit.backend.auth.entity.AuthProvider;
@@ -145,6 +147,43 @@ public class AuthService {
         ));
 
         return new GoogleLoginResponse(accessToken, refreshToken, isNewUser);
+    }
+
+    public RefreshTokenResponse refresh(RefreshTokenRequest request) {
+        String token = request.refreshToken();
+        if (!jwtProvider.validateToken(token)) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "유효하지 않은 리프레시 토큰입니다.");
+        }
+
+        String tokenHash = encodeHash(token);
+        RefreshToken savedToken = refreshTokenRepository.findByTokenHash(tokenHash)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "존재하지 않거나 폐기된 리프레시 토큰입니다."));
+
+        if (savedToken.getRevokedAt() != null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "이미 폐기된 리프레시 토큰입니다.");
+        }
+
+        if (savedToken.getExpiresAt().isBefore(LocalDateTime.now())) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "만료된 리프레시 토큰입니다.");
+        }
+
+        // Refresh Token Rotation: 기존 토큰 폐기
+        savedToken.revoke();
+        refreshTokenRepository.save(savedToken);
+
+        // 새 토큰 발급
+        Long userId = savedToken.getUserId();
+        String newAccessToken = jwtProvider.createAccessToken(userId);
+        String newRefreshToken = jwtProvider.createRefreshToken(userId);
+
+        String newTokenHash = encodeHash(newRefreshToken);
+        refreshTokenRepository.save(new RefreshToken(
+                userId,
+                newTokenHash,
+                LocalDateTime.now().plusNanos(jwtProvider.getRefreshTokenExpirationMillis() * 1000000L)
+        ));
+
+        return new RefreshTokenResponse(newAccessToken, newRefreshToken);
     }
 
     private String encodeHash(String token) {
