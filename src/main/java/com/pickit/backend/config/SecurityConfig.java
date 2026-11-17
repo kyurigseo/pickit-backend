@@ -3,6 +3,7 @@ package com.pickit.backend.config;
 import com.pickit.backend.auth.security.JwtAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -36,6 +37,9 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/logout").authenticated()
                         .requestMatchers("/api/auth/**").permitAll()
+                        // 팝업 조회는 비로그인도 가능 (찜·관심사·위치 인증은 로그인 필요)
+                        .requestMatchers(HttpMethod.GET, "/api/popups", "/api/popups/*", "/api/categories",
+                                "/images/**").permitAll()
                         .anyRequest().authenticated()
                 );
 

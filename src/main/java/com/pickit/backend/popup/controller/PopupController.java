@@ -17,7 +17,6 @@ import jakarta.validation.constraints.Size;
 import java.security.Principal;
 import java.util.List;
 import java.util.Set;
-import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -25,7 +24,6 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @RequestMapping("/api/popups")
@@ -50,18 +48,18 @@ public class PopupController {
             @RequestParam(name = "regions", required = false) Set<@NotNull PopupRegion> regions,
             @RequestParam(name = "categoryIds", required = false) Set<@NotNull @Positive Long> categoryIds
     ) {
-        // 찜 여부와 찜 우선 정렬에는 서버가 확인한 회원 ID가 필요하다.
-        Long userId = userResolver.requireUserId(principal);
+        // 비로그인은 찜 표시·찜 우선 정렬 없이 보여 준다.
+        Set<Long> likedPopupIds = principal == null
+                ? Set.of()
+                : popupLikeService.findLikedPopupIds(userResolver.requireUserId(principal));
         return ApiResponse.ok(popupService.getPopups(new PopupListFilter(q, statuses, regions, categoryIds),
-                popupLikeService.findLikedPopupIds(userId)));
+                likedPopupIds));
     }
 
     @GetMapping("/{popupId}")
     public ApiResponse<PopupDetailResponse> getPopupDetail(
-            Principal principal,
             @PathVariable("popupId") @Positive Long popupId
     ) {
-        requireLogin(principal);
         return ApiResponse.ok(popupService.getPopupDetail(popupId));
     }
 
@@ -82,14 +80,7 @@ public class PopupController {
     }
 
     @GetMapping("/filters")
-    public ApiResponse<PopupFilterOptionsResponse> getFilterOptions(Principal principal) {
-        requireLogin(principal);
+    public ApiResponse<PopupFilterOptionsResponse> getFilterOptions() {
         return ApiResponse.ok(popupService.getFilterOptions());
-    }
-
-    private void requireLogin(Principal principal) {
-        if (principal == null) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
-        }
     }
 }
