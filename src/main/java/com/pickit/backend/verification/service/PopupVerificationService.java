@@ -122,7 +122,7 @@ public class PopupVerificationService {
         if (request.accuracyMeters().compareTo(BigDecimal.valueOf(VerificationPolicy.MAX_ACCURACY_METERS)) > 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "위치 정확도가 낮습니다. 다시 측정해주세요.");
         }
-        if (request.measuredAt().isAfter(now)
+        if (request.measuredAt().isAfter(now.plus(VerificationPolicy.MAX_CLOCK_SKEW))
                 || request.measuredAt().isBefore(now.minus(VerificationPolicy.MAX_LOCATION_AGE))) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "1분 이내에 측정한 최신 위치가 필요합니다.");
         }
