@@ -1,7 +1,9 @@
 package com.pickit.backend.auth.controller;
 
+import com.pickit.backend.auth.dto.request.GoogleLoginRequest;
 import com.pickit.backend.auth.dto.request.LoginRequest;
 import com.pickit.backend.auth.dto.request.SignupRequest;
+import com.pickit.backend.auth.dto.response.GoogleLoginResponse;
 import com.pickit.backend.auth.dto.response.LoginResponse;
 import com.pickit.backend.auth.dto.response.SignupResponse;
 import com.pickit.backend.auth.service.AuthService;
@@ -31,6 +33,12 @@ public class AuthController {
     @PostMapping("/login")
     public ApiResponse<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         LoginResponse response = authService.login(request);
+        return ApiResponse.success(response);
+    }
+
+    @PostMapping("/google")
+    public ApiResponse<GoogleLoginResponse> googleLogin(@Valid @RequestBody GoogleLoginRequest request) {
+        GoogleLoginResponse response = authService.googleLogin(request);
         return ApiResponse.success(response);
     }
 }

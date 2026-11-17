@@ -1,7 +1,9 @@
 package com.pickit.backend.auth.service;
 
+import com.pickit.backend.auth.dto.request.GoogleLoginRequest;
 import com.pickit.backend.auth.dto.request.LoginRequest;
 import com.pickit.backend.auth.dto.request.SignupRequest;
+import com.pickit.backend.auth.dto.response.GoogleLoginResponse;
 import com.pickit.backend.auth.dto.response.LoginResponse;
 import com.pickit.backend.auth.dto.response.SignupResponse;
 import com.pickit.backend.auth.entity.AuthAccount;
@@ -16,10 +18,13 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
+import java.util.Map;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestClient;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
@@ -90,6 +95,56 @@ public class AuthService {
                         user.getIsPremium()
                 )
         );
+    }
+
+    public GoogleLoginResponse googleLogin(GoogleLoginRequest request) {
+        String url = "https://oauth2.googleapis.com/tokeninfo?id_token=" + request.idToken();
+        Map<String, Object> googleUserInfo;
+        try {
+            RestClient restClient = RestClient.create();
+            googleUserInfo = restClient.get()
+                    .uri(url)
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<Map<String, Object>>() {});
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "유효하지 않은 구글 ID 토큰입니다.");
+        }
+
+        if (googleUserInfo == null || !googleUserInfo.containsKey("email")) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "구글 토큰에서 이메일을 확인할 수 없습니다.");
+        }
+
+        String email = (String) googleUserInfo.get("email");
+        String name = googleUserInfo.containsKey("name") ? (String) googleUserInfo.get("name") : email.split("@")[0];
+
+        boolean isNewUser = false;
+        AuthAccount authAccount = authAccountRepository.findByProviderAndProviderUserId(AuthProvider.GOOGLE, email).orElse(null);
+
+        User user;
+        if (authAccount == null) {
+            isNewUser = true;
+            user = userRepository.save(new User(name));
+            authAccountRepository.save(new AuthAccount(
+                    user,
+                    AuthProvider.GOOGLE,
+                    email,
+                    null
+            ));
+        } else {
+            user = authAccount.getUser();
+        }
+
+        String accessToken = jwtProvider.createAccessToken(user.getUserId());
+        String refreshToken = jwtProvider.createRefreshToken(user.getUserId());
+
+        String tokenHash = encodeHash(refreshToken);
+        refreshTokenRepository.save(new RefreshToken(
+                user.getUserId(),
+                tokenHash,
+                LocalDateTime.now().plusNanos(jwtProvider.getRefreshTokenExpirationMillis() * 1000000L)
+        ));
+
+        return new GoogleLoginResponse(accessToken, refreshToken, isNewUser);
     }
 
     private String encodeHash(String token) {
