@@ -1,10 +1,14 @@
 package com.pickit.backend.user.controller;
 
 import com.pickit.backend.common.dto.ApiResponse;
+import com.pickit.backend.user.dto.request.UpdateProfileRequest;
 import com.pickit.backend.user.dto.response.UserResponse;
 import com.pickit.backend.user.service.UserService;
+import jakarta.validation.Valid;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -22,6 +26,13 @@ public class UserController {
     public ApiResponse<UserResponse> getMyProfile(Authentication authentication) {
         Long userId = (Long) authentication.getPrincipal();
         UserResponse response = userService.getMyProfile(userId);
+        return ApiResponse.success(response);
+    }
+
+    @PatchMapping("/me")
+    public ApiResponse<UserResponse> updateMyProfile(Authentication authentication, @Valid @RequestBody UpdateProfileRequest request) {
+        Long userId = (Long) authentication.getPrincipal();
+        UserResponse response = userService.updateMyProfile(userId, request);
         return ApiResponse.success(response);
     }
 }
