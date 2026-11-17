@@ -1,6 +1,9 @@
 package com.pickit.backend.post.service;
 
+import com.pickit.backend.auth.entity.User;
+import com.pickit.backend.auth.repository.UserRepository;
 import com.pickit.backend.interest.repository.UserInterestRepository;
+import com.pickit.backend.post.dto.response.PostDetailResponse;
 import com.pickit.backend.post.dto.response.PostListResponse;
 import com.pickit.backend.post.entity.ExchangePost;
 import com.pickit.backend.post.repository.ExchangePostRepository;
@@ -10,8 +13,10 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 @Service
 @Transactional(readOnly = true)
@@ -20,11 +25,13 @@ public class PostService {
     private final ExchangePostRepository exchangePostRepository;
     private final PostLikeRepository postLikeRepository;
     private final UserInterestRepository userInterestRepository;
+    private final UserRepository userRepository;
 
-    public PostService(ExchangePostRepository exchangePostRepository, PostLikeRepository postLikeRepository, UserInterestRepository userInterestRepository) {
+    public PostService(ExchangePostRepository exchangePostRepository, PostLikeRepository postLikeRepository, UserInterestRepository userInterestRepository, UserRepository userRepository) {
         this.exchangePostRepository = exchangePostRepository;
         this.postLikeRepository = postLikeRepository;
         this.userInterestRepository = userInterestRepository;
+        this.userRepository = userRepository;
     }
 
     public PostListResponse getPosts(Long popupId, Long categoryId, String status, String sort, String keyword, int page, int size, Long currentUserId) {
@@ -63,5 +70,15 @@ public class PostService {
         return posts.stream()
                 .map(post -> PostListResponse.PostSummary.from(post, false))
                 .toList();
+    }
+
+    public PostDetailResponse getPostDetail(Long postId, Long currentUserId) {
+        ExchangePost post = exchangePostRepository.findById(postId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "교환글을 찾을 수 없습니다."));
+
+        User writer = userRepository.findById(post.getUserId()).orElse(null);
+        boolean isLiked = currentUserId != null && postLikeRepository.existsByUserIdAndExchangePost(currentUserId, post);
+
+        return PostDetailResponse.of(post, writer, isLiked);
     }
 }
