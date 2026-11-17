@@ -3,6 +3,7 @@ package com.pickit.backend.post.controller;
 import com.pickit.backend.common.dto.ApiResponse;
 import com.pickit.backend.post.dto.response.PostListResponse;
 import com.pickit.backend.post.service.PostService;
+import java.util.List;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -32,6 +33,16 @@ public class PostController {
     ) {
         Long currentUserId = authentication != null && authentication.getPrincipal() instanceof Long ? (Long) authentication.getPrincipal() : null;
         PostListResponse response = postService.getPosts(popupId, categoryId, status, sort, keyword, page, size, currentUserId);
+        return ApiResponse.success(response);
+    }
+
+    @GetMapping("/recommended")
+    public ApiResponse<List<PostListResponse.PostSummary>> getRecommendedPosts(
+            @RequestParam(defaultValue = "10") int size,
+            Authentication authentication
+    ) {
+        Long userId = (Long) authentication.getPrincipal();
+        List<PostListResponse.PostSummary> response = postService.getRecommendedPosts(userId, size);
         return ApiResponse.success(response);
     }
 }

@@ -1,6 +1,7 @@
 package com.pickit.backend.post.repository;
 
 import com.pickit.backend.post.entity.ExchangePost;
+import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -23,6 +24,21 @@ public interface ExchangePostRepository extends JpaRepository<ExchangePost, Long
             @Param("keyword") String keyword,
             Pageable pageable
     );
+
+    @Query("""
+            select p from ExchangePost p
+            where p.category.categoryId in :categoryIds
+              and p.status = 'OPEN'
+            order by p.createdAt desc
+            """)
+    List<ExchangePost> findByCategoryIdInAndStatusOpen(@Param("categoryIds") List<Long> categoryIds, Pageable pageable);
+
+    @Query("""
+            select p from ExchangePost p
+            where p.status = 'OPEN'
+            order by p.createdAt desc
+            """)
+    List<ExchangePost> findByStatusOpen(Pageable pageable);
 
     Page<ExchangePost> findByUserId(Long userId, Pageable pageable);
 

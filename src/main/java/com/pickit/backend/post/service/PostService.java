@@ -1,9 +1,11 @@
 package com.pickit.backend.post.service;
 
+import com.pickit.backend.interest.repository.UserInterestRepository;
 import com.pickit.backend.post.dto.response.PostListResponse;
 import com.pickit.backend.post.entity.ExchangePost;
 import com.pickit.backend.post.repository.ExchangePostRepository;
 import com.pickit.backend.post.repository.PostLikeRepository;
+import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -17,10 +19,12 @@ public class PostService {
 
     private final ExchangePostRepository exchangePostRepository;
     private final PostLikeRepository postLikeRepository;
+    private final UserInterestRepository userInterestRepository;
 
-    public PostService(ExchangePostRepository exchangePostRepository, PostLikeRepository postLikeRepository) {
+    public PostService(ExchangePostRepository exchangePostRepository, PostLikeRepository postLikeRepository, UserInterestRepository userInterestRepository) {
         this.exchangePostRepository = exchangePostRepository;
         this.postLikeRepository = postLikeRepository;
+        this.userInterestRepository = userInterestRepository;
     }
 
     public PostListResponse getPosts(Long popupId, Long categoryId, String status, String sort, String keyword, int page, int size, Long currentUserId) {
@@ -40,5 +44,24 @@ public class PostService {
                 .toList();
 
         return new PostListResponse(content, postPage.getNumber(), postPage.getSize());
+    }
+
+    public List<PostListResponse.PostSummary> getRecommendedPosts(Long userId, int size) {
+        List<Long> categoryIds = userInterestRepository.findCategoryIdsByUserId(userId);
+        Pageable pageable = PageRequest.of(0, size);
+
+        List<ExchangePost> posts;
+        if (categoryIds == null || categoryIds.isEmpty()) {
+            posts = exchangePostRepository.findByStatusOpen(pageable);
+        } else {
+            posts = exchangePostRepository.findByCategoryIdInAndStatusOpen(categoryIds, pageable);
+            if (posts.isEmpty()) {
+                posts = exchangePostRepository.findByStatusOpen(pageable);
+            }
+        }
+
+        return posts.stream()
+                .map(post -> PostListResponse.PostSummary.from(post, false))
+                .toList();
     }
 }
