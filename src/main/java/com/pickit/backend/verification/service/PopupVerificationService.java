@@ -1,6 +1,5 @@
 package com.pickit.backend.verification.service;
 
-import com.pickit.backend.popup.dto.request.NearbyPopupRequest;
 import com.pickit.backend.popup.dto.response.NearbyPopupResponse;
 import com.pickit.backend.popup.entity.Popup;
 import com.pickit.backend.popup.entity.PopupStatus;
@@ -58,8 +57,7 @@ public class PopupVerificationService {
     public NearbyPopupResponse preview(Long userId, LocationRequest request) {
         userStore.requireUser(userId, false);
         LocationSample sample = validateLocation(request, clock.instant());
-        return popupService.getNearbyPopups(new NearbyPopupRequest(
-                sample.lat(), sample.lng(), VerificationPolicy.RADIUS_METERS));
+        return popupService.getNearbyPopups(sample.lat(), sample.lng(), VerificationPolicy.RADIUS_METERS);
     }
 
     @Transactional
