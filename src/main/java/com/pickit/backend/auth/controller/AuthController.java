@@ -2,6 +2,7 @@ package com.pickit.backend.auth.controller;
 
 import com.pickit.backend.auth.dto.request.GoogleLoginRequest;
 import com.pickit.backend.auth.dto.request.LoginRequest;
+import com.pickit.backend.auth.dto.request.LogoutRequest;
 import com.pickit.backend.auth.dto.request.RefreshTokenRequest;
 import com.pickit.backend.auth.dto.request.SignupRequest;
 import com.pickit.backend.auth.dto.response.GoogleLoginResponse;
@@ -48,5 +49,11 @@ public class AuthController {
     public ApiResponse<RefreshTokenResponse> refresh(@Valid @RequestBody RefreshTokenRequest request) {
         RefreshTokenResponse response = authService.refresh(request);
         return ApiResponse.success(response);
+    }
+
+    @PostMapping("/logout")
+    public ApiResponse<Void> logout(@Valid @RequestBody LogoutRequest request) {
+        authService.logout(request);
+        return ApiResponse.success(null);
     }
 }

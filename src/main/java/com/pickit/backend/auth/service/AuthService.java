@@ -2,6 +2,7 @@ package com.pickit.backend.auth.service;
 
 import com.pickit.backend.auth.dto.request.GoogleLoginRequest;
 import com.pickit.backend.auth.dto.request.LoginRequest;
+import com.pickit.backend.auth.dto.request.LogoutRequest;
 import com.pickit.backend.auth.dto.request.RefreshTokenRequest;
 import com.pickit.backend.auth.dto.request.SignupRequest;
 import com.pickit.backend.auth.dto.response.GoogleLoginResponse;
@@ -184,6 +185,14 @@ public class AuthService {
         ));
 
         return new RefreshTokenResponse(newAccessToken, newRefreshToken);
+    }
+
+    public void logout(LogoutRequest request) {
+        String tokenHash = encodeHash(request.refreshToken());
+        refreshTokenRepository.findByTokenHash(tokenHash).ifPresent(token -> {
+            token.revoke();
+            refreshTokenRepository.save(token);
+        });
     }
 
     private String encodeHash(String token) {
