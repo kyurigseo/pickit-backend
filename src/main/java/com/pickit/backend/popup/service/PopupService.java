@@ -1,7 +1,6 @@
 package com.pickit.backend.popup.service;
 
 import com.pickit.backend.category.service.CategoryService;
-import com.pickit.backend.popup.dto.request.NearbyPopupRequest;
 import com.pickit.backend.popup.dto.request.PopupListFilter;
 import com.pickit.backend.popup.dto.response.NearbyPopupItemResponse;
 import com.pickit.backend.popup.dto.response.NearbyPopupResponse;
@@ -13,6 +12,7 @@ import com.pickit.backend.popup.entity.PopupRegion;
 import com.pickit.backend.popup.entity.PopupStatus;
 import com.pickit.backend.popup.repository.PopupRepository;
 import com.pickit.backend.popup.repository.PopupSpecifications;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Arrays;
@@ -58,11 +58,11 @@ public class PopupService {
                 .toList();
     }
 
-    public NearbyPopupResponse getNearbyPopups(NearbyPopupRequest request) {
+    public NearbyPopupResponse getNearbyPopups(BigDecimal lat, BigDecimal lng, int radiusMeters) {
         LocalDate today = LocalDate.now(SEOUL);
 
         List<NearbyPopupItemResponse> items = popupRepository.findNearbyPopups(
-                request.lat(), request.lng(), request.radiusMeters()
+                lat, lng, radiusMeters
         ).stream().map(popup -> new NearbyPopupItemResponse(
                 popup.getPopupId(),
                 popup.getName(),
@@ -77,9 +77,7 @@ public class PopupService {
                 popup.getDistanceMeters()
         )).toList();
 
-        return new NearbyPopupResponse(
-                request.lat(), request.lng(), request.radiusMeters(), items, items.size()
-        );
+        return new NearbyPopupResponse(lat, lng, radiusMeters, items, items.size());
     }
 
     public PopupDetailResponse getPopupDetail(Long popupId) {
