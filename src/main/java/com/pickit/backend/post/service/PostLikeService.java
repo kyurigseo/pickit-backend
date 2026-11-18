@@ -38,4 +38,14 @@ public class PostLikeService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 찜한 교환글입니다.");
         }
     }
+
+    /** 찜하지 않은 글의 취소 요청도 같은 결과(성공)를 반환한다. */
+    @Transactional
+    public void unlikePost(Long userId, Long postId) {
+        ExchangePost post = exchangePostRepository.findById(postId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "교환글을 찾을 수 없습니다."));
+
+        postLikeRepository.findByUserIdAndExchangePost(userId, post)
+                .ifPresent(postLikeRepository::delete);
+    }
 }
