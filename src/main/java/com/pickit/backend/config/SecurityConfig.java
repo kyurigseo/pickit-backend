@@ -35,6 +35,8 @@ public class SecurityConfig {
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .authorizeHttpRequests(auth -> auth
+                        // WebSocket 핸드셰이크는 브라우저가 헤더를 못 붙이므로 열어두고, 토큰은 STOMP CONNECT에서 검증한다.
+                        .requestMatchers("/ws/**").permitAll()
                         .requestMatchers("/api/auth/logout").authenticated()
                         .requestMatchers("/api/auth/**").permitAll()
                         // 팝업 조회는 비로그인도 가능 (찜·관심사·위치 인증은 로그인 필요)
