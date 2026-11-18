@@ -5,6 +5,7 @@ import com.pickit.backend.appointment.dto.response.AppointmentConfirmResponse;
 import com.pickit.backend.appointment.dto.response.AppointmentListResponse;
 import com.pickit.backend.appointment.entity.TradeAppointment;
 import com.pickit.backend.appointment.repository.TradeAppointmentRepository;
+import com.pickit.backend.appointment.repository.TradeReviewRepository;
 import com.pickit.backend.auth.entity.User;
 import com.pickit.backend.auth.repository.UserRepository;
 import com.pickit.backend.chat.dto.response.ChatMessageBroadcastResponse;
@@ -36,15 +37,18 @@ public class AppointmentService {
     private final ChatRoomRepository chatRoomRepository;
     private final ChatMessageRepository chatMessageRepository;
     private final UserRepository userRepository;
+    private final TradeReviewRepository reviewRepository;
 
     public AppointmentService(TradeAppointmentRepository appointmentRepository,
                               ChatRoomRepository chatRoomRepository,
                               ChatMessageRepository chatMessageRepository,
-                              UserRepository userRepository) {
+                              UserRepository userRepository,
+                              TradeReviewRepository reviewRepository) {
         this.appointmentRepository = appointmentRepository;
         this.chatRoomRepository = chatRoomRepository;
         this.chatMessageRepository = chatMessageRepository;
         this.userRepository = userRepository;
+        this.reviewRepository = reviewRepository;
     }
 
     /** 교환 확정 결과. message는 커밋 후 채팅방 구독자에게 전달할 APPOINTMENT 메시지다. */
@@ -129,7 +133,8 @@ public class AppointmentService {
                 .map(appointment -> {
                     Long opponentId = appointment.getOpponentId(userId);
                     User opponent = userRepository.findById(opponentId).orElse(null);
-                    return AppointmentListResponse.Item.of(appointment, opponentId, opponent);
+                    boolean reviewed = reviewRepository.existsByAppointmentAndReviewerId(appointment, userId);
+                    return AppointmentListResponse.Item.of(appointment, opponentId, opponent, reviewed);
                 })
                 .toList();
 

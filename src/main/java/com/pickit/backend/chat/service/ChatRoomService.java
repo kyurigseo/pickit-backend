@@ -1,6 +1,8 @@
 package com.pickit.backend.chat.service;
 
+import com.pickit.backend.appointment.entity.TradeAppointment;
 import com.pickit.backend.appointment.repository.TradeAppointmentRepository;
+import com.pickit.backend.appointment.repository.TradeReviewRepository;
 import com.pickit.backend.auth.entity.User;
 import com.pickit.backend.auth.repository.UserRepository;
 import com.pickit.backend.chat.dto.response.ChatRoomDetailResponse;
@@ -33,11 +35,12 @@ public class ChatRoomService {
     private final FileService fileService;
     private final TradeAppointmentRepository appointmentRepository;
     private final PostStateResolver postStateResolver;
+    private final TradeReviewRepository reviewRepository;
 
     public ChatRoomService(ChatRoomRepository chatRoomRepository, ExchangePostRepository exchangePostRepository,
                            ChatMessageRepository chatMessageRepository, UserRepository userRepository,
                            FileService fileService, TradeAppointmentRepository appointmentRepository,
-                           PostStateResolver postStateResolver) {
+                           PostStateResolver postStateResolver, TradeReviewRepository reviewRepository) {
         this.chatRoomRepository = chatRoomRepository;
         this.exchangePostRepository = exchangePostRepository;
         this.chatMessageRepository = chatMessageRepository;
@@ -45,6 +48,7 @@ public class ChatRoomService {
         this.fileService = fileService;
         this.appointmentRepository = appointmentRepository;
         this.postStateResolver = postStateResolver;
+        this.reviewRepository = reviewRepository;
     }
 
     /** 교환글에서 채팅을 시작한다. 같은 글에 이미 만든 방이 있으면 그 방을 반환한다. */
@@ -106,7 +110,9 @@ public class ChatRoomService {
 
         Long opponentId = room.getOpponentId(userId);
         User opponent = userRepository.findById(opponentId).orElse(null);
-        return ChatRoomDetailResponse.of(room, opponentId, opponent, appointmentRepository.findByRoom(room).orElse(null));
+        TradeAppointment appointment = appointmentRepository.findByRoom(room).orElse(null);
+        boolean reviewed = appointment != null && reviewRepository.existsByAppointmentAndReviewerId(appointment, userId);
+        return ChatRoomDetailResponse.of(room, opponentId, opponent, appointment, reviewed);
     }
 
     /** 채팅 사진을 저장하고 URL을 반환한다. 메시지 전송은 이후 WebSocket(IMAGE)으로 한다. */
