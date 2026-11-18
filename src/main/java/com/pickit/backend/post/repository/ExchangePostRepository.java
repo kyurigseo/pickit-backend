@@ -41,16 +41,25 @@ public interface ExchangePostRepository extends JpaRepository<ExchangePost, Long
             select p from ExchangePost p
             where p.category.categoryId in :categoryIds
               and p.status = 'OPEN'
+              and not exists (
+                  select 1 from PopupVerification v
+                  where v.verificationId = p.verificationId
+                    and coalesce(v.leftAt, v.expiredAt) > :threshold)
             order by p.createdAt desc
             """)
-    List<ExchangePost> findByCategoryIdInAndStatusOpen(@Param("categoryIds") List<Long> categoryIds, Pageable pageable);
+    List<ExchangePost> findByCategoryIdInAndStatusOpen(@Param("categoryIds") List<Long> categoryIds,
+                                                       @Param("threshold") LocalDateTime threshold, Pageable pageable);
 
     @Query("""
             select p from ExchangePost p
             where p.status = 'OPEN'
+              and not exists (
+                  select 1 from PopupVerification v
+                  where v.verificationId = p.verificationId
+                    and coalesce(v.leftAt, v.expiredAt) > :threshold)
             order by p.createdAt desc
             """)
-    List<ExchangePost> findByStatusOpen(Pageable pageable);
+    List<ExchangePost> findByStatusOpen(@Param("threshold") LocalDateTime threshold, Pageable pageable);
 
     Page<ExchangePost> findByUserId(Long userId, Pageable pageable);
 

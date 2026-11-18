@@ -72,6 +72,18 @@ public class PostService {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "tab은 ONSITE 또는 GENERAL이어야 합니다.");
             }
         }
+        if (tabFilter == null) {
+            // 전체 교환 기준: tab을 생략하면 일반 교환글만 보여준다.
+            tabFilter = PostStateResolver.TAB_GENERAL;
+        }
+        if (PostStateResolver.TAB_ONSITE.equals(tabFilter)) {
+            if (popupId == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "현장 교환글은 popupId가 필요합니다.");
+            }
+            if (!postStateResolver.isVerifiedNow(currentUserId, popupId)) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "현장 교환글은 해당 팝업에서 위치 인증을 한 분만 볼 수 있습니다.");
+            }
+        }
         Sort sortOrder = Sort.by(Sort.Direction.DESC, "createdAt");
         if ("RECOMMEND".equalsIgnoreCase(sort)) {
             sortOrder = Sort.by(Sort.Direction.DESC, "createdAt");
@@ -97,13 +109,15 @@ public class PostService {
         List<Long> categoryIds = userInterestRepository.findCategoryIdsByUserId(userId);
         Pageable pageable = PageRequest.of(0, size);
 
+        // 홈은 항상 전체(일반) 교환글 기준이라 현장 글은 제외한다.
+        LocalDateTime threshold = PostStateResolver.onsiteThreshold(PostStateResolver.now());
         List<ExchangePost> posts;
         if (categoryIds == null || categoryIds.isEmpty()) {
-            posts = exchangePostRepository.findByStatusOpen(pageable);
+            posts = exchangePostRepository.findByStatusOpen(threshold, pageable);
         } else {
-            posts = exchangePostRepository.findByCategoryIdInAndStatusOpen(categoryIds, pageable);
+            posts = exchangePostRepository.findByCategoryIdInAndStatusOpen(categoryIds, threshold, pageable);
             if (posts.isEmpty()) {
-                posts = exchangePostRepository.findByStatusOpen(pageable);
+                posts = exchangePostRepository.findByStatusOpen(threshold, pageable);
             }
         }
 
@@ -117,10 +131,17 @@ public class PostService {
         ExchangePost post = exchangePostRepository.findById(postId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "교환글을 찾을 수 없습니다."));
 
+        PostStateResolver.PostState state = postStateResolver.resolve(post);
+        boolean isAuthor = currentUserId != null && currentUserId.equals(post.getUserId());
+        if (PostStateResolver.TAB_ONSITE.equals(state.tab()) && !isAuthor
+                && !postStateResolver.isVerifiedNow(currentUserId, post.getPopup().getPopupId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "현장 교환글은 해당 팝업에서 위치 인증을 한 분만 볼 수 있습니다.");
+        }
+
         User writer = userRepository.findById(post.getUserId()).orElse(null);
         boolean isLiked = currentUserId != null && postLikeRepository.existsByUserIdAndExchangePost(currentUserId, post);
 
-        return PostDetailResponse.of(post, writer, isLiked);
+        return PostDetailResponse.of(post, writer, isLiked, state);
     }
 
     @Transactional
@@ -128,7 +149,7 @@ public class PostService {
         PopupVerification verification = popupVerificationRepository.findFirstByUserIdAndPopup_PopupIdOrderByVerificationIdDesc(userId, request.popupId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "해당 팝업에 대한 위치 인증이 필요합니다."));
 
-        if (!verification.isVerifiedAt(LocalDateTime.now())) {
+        if (!verification.isVerifiedAt(PostStateResolver.now())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "위치 인증이 만료되었거나 유효하지 않습니다.");
         }
 
