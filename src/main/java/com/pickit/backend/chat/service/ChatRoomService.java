@@ -2,6 +2,7 @@ package com.pickit.backend.chat.service;
 
 import com.pickit.backend.auth.entity.User;
 import com.pickit.backend.auth.repository.UserRepository;
+import com.pickit.backend.chat.dto.response.ChatRoomDetailResponse;
 import com.pickit.backend.chat.dto.response.ChatRoomListItemResponse;
 import com.pickit.backend.chat.dto.response.CreateChatRoomResponse;
 import com.pickit.backend.chat.entity.ChatRoom;
@@ -68,5 +69,18 @@ public class ChatRoomService {
                             chatMessageRepository.findFirstByRoomOrderByMessageIdDesc(room).orElse(null));
                 })
                 .toList();
+    }
+
+    public ChatRoomDetailResponse getRoomDetail(Long userId, Long roomId) {
+        ChatRoom room = chatRoomRepository.findById(roomId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "채팅방을 찾을 수 없습니다."));
+
+        if (!room.isParticipant(userId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "채팅방에 접근할 권한이 없습니다.");
+        }
+
+        Long opponentId = room.getOpponentId(userId);
+        User opponent = userRepository.findById(opponentId).orElse(null);
+        return ChatRoomDetailResponse.of(room, opponentId, opponent);
     }
 }
