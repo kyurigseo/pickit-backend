@@ -134,6 +134,8 @@ public class PostService {
                 request.description()
         );
 
+        post.linkVerification(verification.getVerificationId());
+
         if (request.imageUrls() != null) {
             for (int i = 0; i < request.imageUrls().size(); i++) {
                 post.addImage(new PostImage(request.imageUrls().get(i), i));
