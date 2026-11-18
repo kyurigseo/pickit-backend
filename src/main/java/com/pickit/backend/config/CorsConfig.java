@@ -34,5 +34,7 @@ public class CorsConfig implements WebMvcConfigurer {
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         registry.addResourceHandler("/images/profiles/**")
                 .addResourceLocations("file:uploads/profiles/");
+        registry.addResourceHandler("/images/posts/**")
+                .addResourceLocations("file:uploads/posts/");
     }
 }
