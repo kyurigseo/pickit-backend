@@ -1,14 +1,18 @@
 package com.pickit.backend.chat.controller;
 
 import com.pickit.backend.chat.dto.request.CreateChatRoomRequest;
+import com.pickit.backend.chat.dto.response.ChatRoomListItemResponse;
 import com.pickit.backend.chat.dto.response.CreateChatRoomResponse;
 import com.pickit.backend.chat.service.ChatRoomService;
 import com.pickit.backend.common.dto.ApiResponse;
 import jakarta.validation.Valid;
+import java.util.List;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -28,5 +32,15 @@ public class ChatRoomController {
     ) {
         Long userId = (Long) authentication.getPrincipal();
         return ApiResponse.success(chatRoomService.createRoom(userId, request.postId()));
+    }
+
+    @GetMapping
+    public ApiResponse<List<ChatRoomListItemResponse>> getMyRooms(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            Authentication authentication
+    ) {
+        Long userId = (Long) authentication.getPrincipal();
+        return ApiResponse.success(chatRoomService.getMyRooms(userId, page, size));
     }
 }

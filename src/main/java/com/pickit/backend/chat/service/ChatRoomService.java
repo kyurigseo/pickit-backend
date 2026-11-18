@@ -1,11 +1,17 @@
 package com.pickit.backend.chat.service;
 
+import com.pickit.backend.auth.entity.User;
+import com.pickit.backend.auth.repository.UserRepository;
+import com.pickit.backend.chat.dto.response.ChatRoomListItemResponse;
 import com.pickit.backend.chat.dto.response.CreateChatRoomResponse;
 import com.pickit.backend.chat.entity.ChatRoom;
+import com.pickit.backend.chat.repository.ChatMessageRepository;
 import com.pickit.backend.chat.repository.ChatRoomRepository;
 import com.pickit.backend.post.entity.ExchangePost;
 import com.pickit.backend.post.repository.ExchangePostRepository;
+import java.util.List;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,10 +23,15 @@ public class ChatRoomService {
 
     private final ChatRoomRepository chatRoomRepository;
     private final ExchangePostRepository exchangePostRepository;
+    private final ChatMessageRepository chatMessageRepository;
+    private final UserRepository userRepository;
 
-    public ChatRoomService(ChatRoomRepository chatRoomRepository, ExchangePostRepository exchangePostRepository) {
+    public ChatRoomService(ChatRoomRepository chatRoomRepository, ExchangePostRepository exchangePostRepository,
+                           ChatMessageRepository chatMessageRepository, UserRepository userRepository) {
         this.chatRoomRepository = chatRoomRepository;
         this.exchangePostRepository = exchangePostRepository;
+        this.chatMessageRepository = chatMessageRepository;
+        this.userRepository = userRepository;
     }
 
     /** 교환글에서 채팅을 시작한다. 같은 글에 이미 만든 방이 있으면 그 방을 반환한다. */
@@ -46,5 +57,16 @@ public class ChatRoomService {
                         return new CreateChatRoomResponse(existing.getRoomId(), false);
                     }
                 });
+    }
+
+    public List<ChatRoomListItemResponse> getMyRooms(Long userId, int page, int size) {
+        return chatRoomRepository.findMyRooms(userId, PageRequest.of(page, size)).getContent().stream()
+                .map(room -> {
+                    Long opponentId = room.getOpponentId(userId);
+                    User opponent = userRepository.findById(opponentId).orElse(null);
+                    return ChatRoomListItemResponse.of(room, opponentId, opponent,
+                            chatMessageRepository.findFirstByRoomOrderByMessageIdDesc(room).orElse(null));
+                })
+                .toList();
     }
 }
