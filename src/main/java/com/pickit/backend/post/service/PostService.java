@@ -196,4 +196,18 @@ public class PostService {
                 .map(file -> fileService.storeFile(file, "posts"))
                 .toList();
     }
+
+    public PostListResponse getMyPosts(Long userId, String status, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+
+        Page<ExchangePost> postPage = (status == null || status.isBlank())
+                ? exchangePostRepository.findByUserId(userId, pageable)
+                : exchangePostRepository.findByUserIdAndStatus(userId, status, pageable);
+
+        var content = postPage.getContent().stream()
+                .map(post -> PostListResponse.PostSummary.from(post, postLikeRepository.existsByUserIdAndExchangePost(userId, post)))
+                .toList();
+
+        return new PostListResponse(content, postPage.getNumber(), postPage.getSize());
+    }
 }
