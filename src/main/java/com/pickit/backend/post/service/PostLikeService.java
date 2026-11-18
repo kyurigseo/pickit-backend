@@ -1,10 +1,14 @@
 package com.pickit.backend.post.service;
 
+import com.pickit.backend.post.dto.response.PostListResponse;
 import com.pickit.backend.post.entity.ExchangePost;
 import com.pickit.backend.post.entity.PostLike;
 import com.pickit.backend.post.repository.ExchangePostRepository;
 import com.pickit.backend.post.repository.PostLikeRepository;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -47,5 +51,17 @@ public class PostLikeService {
 
         postLikeRepository.findByUserIdAndExchangePost(userId, post)
                 .ifPresent(postLikeRepository::delete);
+    }
+
+    /** 최근에 찜한 순서로 내가 찜한 교환글을 조회한다. */
+    public PostListResponse getMyLikedPosts(Long userId, int page, int size) {
+        PageRequest pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "likeId"));
+        Page<ExchangePost> postPage = postLikeRepository.findLikedPostsByUserId(userId, pageable);
+
+        var content = postPage.getContent().stream()
+                .map(post -> PostListResponse.PostSummary.from(post, true))
+                .toList();
+
+        return new PostListResponse(content, postPage.getNumber(), postPage.getSize());
     }
 }
