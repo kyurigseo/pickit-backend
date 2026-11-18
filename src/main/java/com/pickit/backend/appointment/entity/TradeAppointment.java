@@ -53,6 +53,14 @@ public class TradeAppointment {
         this.confirmedAt = confirmedAt;
     }
 
+    public boolean isCompleted() {
+        return completedAt != null;
+    }
+
+    public void complete(LocalDateTime completedAt) {
+        this.completedAt = completedAt;
+    }
+
     public boolean isParticipant(Long userId) {
         return this.userId.equals(userId) || this.userId2.equals(userId);
     }

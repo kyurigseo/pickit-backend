@@ -1,12 +1,14 @@
 package com.pickit.backend.appointment.controller;
 
 import com.pickit.backend.appointment.dto.request.CreateAppointmentRequest;
+import com.pickit.backend.appointment.dto.response.AppointmentCompleteResponse;
 import com.pickit.backend.appointment.dto.response.AppointmentConfirmResponse;
 import com.pickit.backend.appointment.service.AppointmentService;
 import com.pickit.backend.common.dto.ApiResponse;
 import jakarta.validation.Valid;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -36,5 +38,14 @@ public class AppointmentController {
         // 저장(커밋)이 끝난 뒤 채팅방 구독자에게 약속 확정 메시지를 전달한다.
         messagingTemplate.convertAndSend("/sub/chat-rooms/" + roomId, result.message());
         return ApiResponse.success(result.appointment());
+    }
+
+    @PatchMapping("/appointments/{appointmentId}/complete")
+    public ApiResponse<AppointmentCompleteResponse> completeAppointment(
+            @PathVariable Long appointmentId,
+            Authentication authentication
+    ) {
+        Long userId = (Long) authentication.getPrincipal();
+        return ApiResponse.success(appointmentService.complete(userId, appointmentId));
     }
 }

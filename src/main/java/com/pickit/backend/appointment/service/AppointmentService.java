@@ -1,5 +1,6 @@
 package com.pickit.backend.appointment.service;
 
+import com.pickit.backend.appointment.dto.response.AppointmentCompleteResponse;
 import com.pickit.backend.appointment.dto.response.AppointmentConfirmResponse;
 import com.pickit.backend.appointment.entity.TradeAppointment;
 import com.pickit.backend.appointment.repository.TradeAppointmentRepository;
@@ -77,5 +78,23 @@ public class AppointmentService {
                 new AppointmentConfirmResponse(appointment.getAppointmentId(), appointment.getMeetingPlace(),
                         appointment.getConfirmedAt()),
                 ChatMessageBroadcastResponse.from(saved));
+    }
+
+    /** 약속 참여자가 교환 완료를 기록하고, 교환글 상태를 COMPLETED로 바꾼다. */
+    @Transactional
+    public AppointmentCompleteResponse complete(Long userId, Long appointmentId) {
+        TradeAppointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "교환 약속을 찾을 수 없습니다."));
+        if (!appointment.isParticipant(userId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "교환 약속에 접근할 권한이 없습니다.");
+        }
+        if (appointment.isCompleted()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 교환이 완료된 약속입니다.");
+        }
+
+        appointment.complete(LocalDateTime.now(SEOUL).truncatedTo(ChronoUnit.SECONDS));
+        appointment.getPost().updateStatus("COMPLETED");
+
+        return new AppointmentCompleteResponse(appointment.getAppointmentId(), appointment.getCompletedAt());
     }
 }
