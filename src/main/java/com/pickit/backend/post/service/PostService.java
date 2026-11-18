@@ -4,6 +4,7 @@ import com.pickit.backend.auth.entity.User;
 import com.pickit.backend.auth.repository.UserRepository;
 import com.pickit.backend.category.entity.Category;
 import com.pickit.backend.category.repository.CategoryRepository;
+import com.pickit.backend.chat.repository.ChatRoomRepository;
 import com.pickit.backend.common.service.FileService;
 import com.pickit.backend.interest.repository.UserInterestRepository;
 import com.pickit.backend.popup.entity.Popup;
@@ -43,6 +44,7 @@ public class PostService {
     private final PopupVerificationRepository popupVerificationRepository;
     private final FileService fileService;
     private final PostStateResolver postStateResolver;
+    private final ChatRoomRepository chatRoomRepository;
 
     public PostService(ExchangePostRepository exchangePostRepository,
                        PostLikeRepository postLikeRepository,
@@ -52,7 +54,8 @@ public class PostService {
                        CategoryRepository categoryRepository,
                        PopupVerificationRepository popupVerificationRepository,
                        FileService fileService,
-                       PostStateResolver postStateResolver) {
+                       PostStateResolver postStateResolver,
+                       ChatRoomRepository chatRoomRepository) {
         this.exchangePostRepository = exchangePostRepository;
         this.postLikeRepository = postLikeRepository;
         this.userInterestRepository = userInterestRepository;
@@ -62,6 +65,7 @@ public class PostService {
         this.popupVerificationRepository = popupVerificationRepository;
         this.fileService = fileService;
         this.postStateResolver = postStateResolver;
+        this.chatRoomRepository = chatRoomRepository;
     }
 
     public PostListResponse getPosts(Long popupId, Long categoryId, String status, String sort, String keyword, String tab, int page, int size, Long currentUserId) {
@@ -208,6 +212,10 @@ public class PostService {
 
         if (!post.getUserId().equals(userId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "삭제 권한이 없습니다.");
+        }
+
+        if (chatRoomRepository.existsByPost(post)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "채팅이 진행된 글은 삭제할 수 없습니다.");
         }
 
         postLikeRepository.deleteByExchangePost(post);
