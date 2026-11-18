@@ -1,5 +1,6 @@
 package com.pickit.backend.chat.dto.response;
 
+import com.pickit.backend.appointment.entity.TradeAppointment;
 import com.pickit.backend.auth.entity.User;
 import com.pickit.backend.chat.entity.ChatRoom;
 import com.pickit.backend.post.entity.ExchangePost;
@@ -12,7 +13,7 @@ public record ChatRoomDetailResponse(
         Long roomId,
         PostInfo post,
         Opponent opponent,
-        Object appointment
+        AppointmentInfo appointment
 ) {
     public record PostInfo(
             Long postId,
@@ -60,13 +61,30 @@ public record ChatRoomDetailResponse(
         }
     }
 
-    /** appointment는 교환약속 기능 구현 전까지 항상 null이다. */
-    public static ChatRoomDetailResponse of(ChatRoom room, Long opponentId, User opponent) {
+    /** 확정된 교환 약속. completedAt이 null이면 아직 교환 전이다. */
+    public record AppointmentInfo(
+            Long appointmentId,
+            String meetingPlace,
+            LocalDateTime confirmedAt,
+            LocalDateTime completedAt
+    ) {
+        public static AppointmentInfo from(TradeAppointment appointment) {
+            return new AppointmentInfo(
+                    appointment.getAppointmentId(),
+                    appointment.getMeetingPlace(),
+                    appointment.getConfirmedAt(),
+                    appointment.getCompletedAt()
+            );
+        }
+    }
+
+    /** appointment는 약속이 없으면 null이다. */
+    public static ChatRoomDetailResponse of(ChatRoom room, Long opponentId, User opponent, TradeAppointment appointment) {
         return new ChatRoomDetailResponse(
                 room.getRoomId(),
                 PostInfo.from(room.getPost()),
                 Opponent.from(opponentId, opponent),
-                null
+                appointment == null ? null : AppointmentInfo.from(appointment)
         );
     }
 }
