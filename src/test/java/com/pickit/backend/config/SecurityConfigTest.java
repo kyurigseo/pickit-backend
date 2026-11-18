@@ -1,5 +1,6 @@
 package com.pickit.backend.config;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -37,5 +38,17 @@ class SecurityConfigTest {
                         .header("Access-Control-Request-Headers", "authorization"))
                 .andExpect(status().isForbidden())
                 .andExpect(header().doesNotExist("Access-Control-Allow-Origin"));
+    }
+
+    @Test
+    void requestWithoutTokenReturnsUnauthorized() throws Exception {
+        mockMvc.perform(get("/api/me/interests"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void requestWithInvalidTokenReturnsUnauthorized() throws Exception {
+        mockMvc.perform(get("/api/me/interests").header("Authorization", "Bearer invalid-token"))
+                .andExpect(status().isUnauthorized());
     }
 }
