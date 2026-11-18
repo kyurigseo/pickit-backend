@@ -1,0 +1,81 @@
+package com.pickit.backend.appointment.service;
+
+import com.pickit.backend.appointment.dto.response.AppointmentConfirmResponse;
+import com.pickit.backend.appointment.entity.TradeAppointment;
+import com.pickit.backend.appointment.repository.TradeAppointmentRepository;
+import com.pickit.backend.chat.dto.response.ChatMessageBroadcastResponse;
+import com.pickit.backend.chat.entity.ChatMessage;
+import com.pickit.backend.chat.entity.ChatMessageType;
+import com.pickit.backend.chat.entity.ChatRoom;
+import com.pickit.backend.chat.repository.ChatMessageRepository;
+import com.pickit.backend.chat.repository.ChatRoomRepository;
+import com.pickit.backend.post.entity.ExchangePost;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+
+@Service
+@Transactional(readOnly = true)
+public class AppointmentService {
+
+    private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
+
+    private final TradeAppointmentRepository appointmentRepository;
+    private final ChatRoomRepository chatRoomRepository;
+    private final ChatMessageRepository chatMessageRepository;
+
+    public AppointmentService(TradeAppointmentRepository appointmentRepository,
+                              ChatRoomRepository chatRoomRepository,
+                              ChatMessageRepository chatMessageRepository) {
+        this.appointmentRepository = appointmentRepository;
+        this.chatRoomRepository = chatRoomRepository;
+        this.chatMessageRepository = chatMessageRepository;
+    }
+
+    /** 교환 확정 결과. message는 커밋 후 채팅방 구독자에게 전달할 APPOINTMENT 메시지다. */
+    public record ConfirmResult(AppointmentConfirmResponse appointment, ChatMessageBroadcastResponse message) {
+    }
+
+    /** 채팅방 참여자가 교환 장소를 정해 약속을 확정한다. 한 채팅방에는 약속이 하나만 만들어진다. */
+    @Transactional
+    public ConfirmResult confirm(Long userId, Long roomId, String meetingPlace) {
+        ChatRoom room = chatRoomRepository.findById(roomId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "채팅방을 찾을 수 없습니다."));
+        if (!room.isParticipant(userId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "채팅방에 접근할 권한이 없습니다.");
+        }
+        if (appointmentRepository.existsByRoom(room)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 교환 약속이 확정된 채팅방입니다.");
+        }
+
+        LocalDateTime now = LocalDateTime.now(SEOUL).truncatedTo(ChronoUnit.SECONDS);
+        TradeAppointment appointment;
+        try {
+            appointment = appointmentRepository.saveAndFlush(
+                    new TradeAppointment(room, userId, room.getOpponentId(userId), meetingPlace.strip(), now));
+        } catch (DataIntegrityViolationException e) {
+            // 동시 요청으로 UK(room_id)에 걸린 경우
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 교환 약속이 확정된 채팅방입니다.");
+        }
+
+        // 확정되면 글을 예약 상태로 바꾼다. 이미 다른 상태면 그대로 둔다.
+        ExchangePost post = room.getPost();
+        if ("OPEN".equals(post.getStatus())) {
+            post.updateStatus("RESERVED");
+        }
+
+        ChatMessage saved = chatMessageRepository.saveAndFlush(new ChatMessage(
+                room, userId, ChatMessageType.APPOINTMENT,
+                "교환 약속이 확정되었습니다. 장소: " + appointment.getMeetingPlace(), null));
+
+        return new ConfirmResult(
+                new AppointmentConfirmResponse(appointment.getAppointmentId(), appointment.getMeetingPlace(),
+                        appointment.getConfirmedAt()),
+                ChatMessageBroadcastResponse.from(saved));
+    }
+}
