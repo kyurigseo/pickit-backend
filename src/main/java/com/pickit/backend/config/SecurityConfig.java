@@ -35,6 +35,8 @@ public class SecurityConfig {
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .authorizeHttpRequests(auth -> auth
+                        // 배포 확인용 헬스체크와, 400·500 오류 응답을 만드는 /error는 로그인 없이 연다.
+                        .requestMatchers("/api/health", "/error").permitAll()
                         // WebSocket 핸드셰이크는 브라우저가 헤더를 못 붙이므로 열어두고, 토큰은 STOMP CONNECT에서 검증한다.
                         .requestMatchers("/ws/**").permitAll()
                         .requestMatchers("/api/auth/logout").authenticated()
