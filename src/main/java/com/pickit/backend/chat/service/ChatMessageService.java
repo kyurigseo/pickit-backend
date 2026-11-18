@@ -1,8 +1,11 @@
 package com.pickit.backend.chat.service;
 
+import com.pickit.backend.chat.dto.request.SendChatMessageRequest;
+import com.pickit.backend.chat.dto.response.ChatMessageBroadcastResponse;
 import com.pickit.backend.chat.dto.response.ChatMessageListResponse;
 import com.pickit.backend.chat.dto.response.ChatMessageResponse;
 import com.pickit.backend.chat.entity.ChatMessage;
+import com.pickit.backend.chat.entity.ChatMessageType;
 import com.pickit.backend.chat.entity.ChatRoom;
 import com.pickit.backend.chat.repository.ChatMessageRepository;
 import com.pickit.backend.chat.repository.ChatRoomRepository;
@@ -20,6 +23,7 @@ import org.springframework.web.server.ResponseStatusException;
 public class ChatMessageService {
 
     private static final int MAX_PAGE_SIZE = 100;
+    private static final String CHAT_IMAGE_URL_PREFIX = "/images/chats/";
 
     private final ChatMessageRepository chatMessageRepository;
     private final ChatRoomRepository chatRoomRepository;
@@ -59,5 +63,39 @@ public class ChatMessageService {
         Collections.reverse(page);
         List<ChatMessageResponse> messages = page.stream().map(ChatMessageResponse::from).toList();
         return new ChatMessageListResponse(messages, nextCursor);
+    }
+
+    /** WebSocket으로 받은 메시지를 검증하고 저장한다. 구독자 전송은 호출한 쪽에서 한다. */
+    @Transactional
+    public ChatMessageBroadcastResponse saveMessage(Long userId, Long roomId, SendChatMessageRequest request) {
+        ChatRoom room = chatRoomRepository.findById(roomId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "채팅방을 찾을 수 없습니다."));
+        if (!room.isParticipant(userId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "채팅방에 접근할 권한이 없습니다.");
+        }
+        if (request == null || request.messageType() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "messageType은 필수입니다.");
+        }
+
+        String content = null;
+        String imageUrl = null;
+        if (request.messageType() == ChatMessageType.TEXT) {
+            if (request.content() == null || request.content().isBlank()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "메시지 내용이 비어 있습니다.");
+            }
+            content = request.content();
+        } else if (request.messageType() == ChatMessageType.IMAGE) {
+            if (request.imageUrl() == null || !request.imageUrl().startsWith(CHAT_IMAGE_URL_PREFIX)) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "올바르지 않은 이미지 URL입니다.");
+            }
+            imageUrl = request.imageUrl();
+        } else {
+            // APPOINTMENT 메시지는 교환 확정 시 서버가 직접 만든다.
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "전송할 수 없는 메시지 타입입니다.");
+        }
+
+        ChatMessage saved = chatMessageRepository.saveAndFlush(
+                new ChatMessage(room, userId, request.messageType(), content, imageUrl));
+        return ChatMessageBroadcastResponse.from(saved);
     }
 }
