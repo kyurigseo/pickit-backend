@@ -2,8 +2,11 @@ package com.pickit.backend.appointment.service;
 
 import com.pickit.backend.appointment.dto.response.AppointmentCompleteResponse;
 import com.pickit.backend.appointment.dto.response.AppointmentConfirmResponse;
+import com.pickit.backend.appointment.dto.response.AppointmentListResponse;
 import com.pickit.backend.appointment.entity.TradeAppointment;
 import com.pickit.backend.appointment.repository.TradeAppointmentRepository;
+import com.pickit.backend.auth.entity.User;
+import com.pickit.backend.auth.repository.UserRepository;
 import com.pickit.backend.chat.dto.response.ChatMessageBroadcastResponse;
 import com.pickit.backend.chat.entity.ChatMessage;
 import com.pickit.backend.chat.entity.ChatMessageType;
@@ -15,6 +18,9 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,13 +35,16 @@ public class AppointmentService {
     private final TradeAppointmentRepository appointmentRepository;
     private final ChatRoomRepository chatRoomRepository;
     private final ChatMessageRepository chatMessageRepository;
+    private final UserRepository userRepository;
 
     public AppointmentService(TradeAppointmentRepository appointmentRepository,
                               ChatRoomRepository chatRoomRepository,
-                              ChatMessageRepository chatMessageRepository) {
+                              ChatMessageRepository chatMessageRepository,
+                              UserRepository userRepository) {
         this.appointmentRepository = appointmentRepository;
         this.chatRoomRepository = chatRoomRepository;
         this.chatMessageRepository = chatMessageRepository;
+        this.userRepository = userRepository;
     }
 
     /** 교환 확정 결과. message는 커밋 후 채팅방 구독자에게 전달할 APPOINTMENT 메시지다. */
@@ -96,5 +105,31 @@ public class AppointmentService {
         appointment.getPost().updateStatus("COMPLETED");
 
         return new AppointmentCompleteResponse(appointment.getAppointmentId(), appointment.getCompletedAt());
+    }
+
+    /** 내 약속과 교환 내역을 확정 시각 최신순으로 조회한다. status: CONFIRMED(진행 중) / COMPLETED(완료), 없으면 전체. */
+    public AppointmentListResponse getMyAppointments(Long userId, String status, int page, int size) {
+        PageRequest pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "confirmedAt"));
+
+        Page<TradeAppointment> result;
+        if (status == null || status.isBlank()) {
+            result = appointmentRepository.findMine(userId, pageable);
+        } else if ("CONFIRMED".equals(status)) {
+            result = appointmentRepository.findMineConfirmed(userId, pageable);
+        } else if ("COMPLETED".equals(status)) {
+            result = appointmentRepository.findMineCompleted(userId, pageable);
+        } else {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "status는 CONFIRMED 또는 COMPLETED여야 합니다.");
+        }
+
+        var content = result.getContent().stream()
+                .map(appointment -> {
+                    Long opponentId = appointment.getOpponentId(userId);
+                    User opponent = userRepository.findById(opponentId).orElse(null);
+                    return AppointmentListResponse.Item.of(appointment, opponentId, opponent);
+                })
+                .toList();
+
+        return new AppointmentListResponse(content, result.getNumber(), result.getSize());
     }
 }
