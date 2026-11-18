@@ -8,6 +8,7 @@ import com.pickit.backend.chat.dto.response.CreateChatRoomResponse;
 import com.pickit.backend.chat.entity.ChatRoom;
 import com.pickit.backend.chat.repository.ChatMessageRepository;
 import com.pickit.backend.chat.repository.ChatRoomRepository;
+import com.pickit.backend.common.service.FileService;
 import com.pickit.backend.post.entity.ExchangePost;
 import com.pickit.backend.post.repository.ExchangePostRepository;
 import java.util.List;
@@ -16,6 +17,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
@@ -26,13 +28,16 @@ public class ChatRoomService {
     private final ExchangePostRepository exchangePostRepository;
     private final ChatMessageRepository chatMessageRepository;
     private final UserRepository userRepository;
+    private final FileService fileService;
 
     public ChatRoomService(ChatRoomRepository chatRoomRepository, ExchangePostRepository exchangePostRepository,
-                           ChatMessageRepository chatMessageRepository, UserRepository userRepository) {
+                           ChatMessageRepository chatMessageRepository, UserRepository userRepository,
+                           FileService fileService) {
         this.chatRoomRepository = chatRoomRepository;
         this.exchangePostRepository = exchangePostRepository;
         this.chatMessageRepository = chatMessageRepository;
         this.userRepository = userRepository;
+        this.fileService = fileService;
     }
 
     /** 교환글에서 채팅을 시작한다. 같은 글에 이미 만든 방이 있으면 그 방을 반환한다. */
@@ -82,5 +87,21 @@ public class ChatRoomService {
         Long opponentId = room.getOpponentId(userId);
         User opponent = userRepository.findById(opponentId).orElse(null);
         return ChatRoomDetailResponse.of(room, opponentId, opponent);
+    }
+
+    /** 채팅 사진을 저장하고 URL을 반환한다. 메시지 전송은 이후 WebSocket(IMAGE)으로 한다. */
+    public String uploadImage(Long userId, Long roomId, MultipartFile file) {
+        ChatRoom room = chatRoomRepository.findById(roomId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "채팅방을 찾을 수 없습니다."));
+
+        if (!room.isParticipant(userId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "채팅방에 접근할 권한이 없습니다.");
+        }
+        String contentType = file == null ? null : file.getContentType();
+        if (contentType == null || !contentType.startsWith("image/")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "이미지 파일만 업로드할 수 있습니다.");
+        }
+
+        return fileService.storeFile(file, "chats");
     }
 }

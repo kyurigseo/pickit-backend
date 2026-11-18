@@ -8,6 +8,8 @@ import com.pickit.backend.chat.service.ChatRoomService;
 import com.pickit.backend.common.dto.ApiResponse;
 import jakarta.validation.Valid;
 import java.util.List;
+import java.util.Map;
+import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -16,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/chat-rooms")
@@ -53,5 +56,15 @@ public class ChatRoomController {
     ) {
         Long userId = (Long) authentication.getPrincipal();
         return ApiResponse.success(chatRoomService.getRoomDetail(userId, roomId));
+    }
+
+    @PostMapping(value = "/{roomId}/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse<Map<String, String>> uploadImage(
+            @PathVariable Long roomId,
+            @RequestParam("file") MultipartFile file,
+            Authentication authentication
+    ) {
+        Long userId = (Long) authentication.getPrincipal();
+        return ApiResponse.success(Map.of("imageUrl", chatRoomService.uploadImage(userId, roomId, file)));
     }
 }
