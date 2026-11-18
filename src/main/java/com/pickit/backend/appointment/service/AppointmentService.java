@@ -63,6 +63,11 @@ public class AppointmentService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 교환 약속이 확정된 채팅방입니다.");
         }
 
+        // 다른 채팅방에서 이미 약속이 확정돼 글이 예약 중/완료면 또 확정할 수 없다.
+        if (!"OPEN".equals(room.getPost().getStatus())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 다른 분과 교환이 진행 중인 글입니다.");
+        }
+
         LocalDateTime now = LocalDateTime.now(SEOUL).truncatedTo(ChronoUnit.SECONDS);
         TradeAppointment appointment;
         try {
@@ -73,11 +78,9 @@ public class AppointmentService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 교환 약속이 확정된 채팅방입니다.");
         }
 
-        // 확정되면 글을 예약 상태로 바꾼다. 이미 다른 상태면 그대로 둔다.
+        // 확정되면 글을 예약 상태로 바꾼다.
         ExchangePost post = room.getPost();
-        if ("OPEN".equals(post.getStatus())) {
-            post.updateStatus("RESERVED");
-        }
+        post.updateStatus("RESERVED");
 
         ChatMessage saved = chatMessageRepository.saveAndFlush(new ChatMessage(
                 room, userId, ChatMessageType.APPOINTMENT,

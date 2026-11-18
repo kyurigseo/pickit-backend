@@ -65,6 +65,11 @@ public class ChatRoomService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "현장 교환글은 해당 팝업에서 위치 인증을 한 분만 채팅을 시작할 수 있습니다.");
         }
 
+        // 이미 예약 중이거나 교환 완료된 글에는 새 채팅을 시작할 수 없다. (기존 방은 위에서 그대로 열린다.)
+        if (existingRoom.isEmpty() && !"OPEN".equals(post.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 교환이 진행 중이거나 완료된 글입니다.");
+        }
+
         return existingRoom
                 .map(room -> new CreateChatRoomResponse(room.getRoomId(), false))
                 .orElseGet(() -> {
