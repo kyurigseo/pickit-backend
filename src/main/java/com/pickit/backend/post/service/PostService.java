@@ -42,6 +42,7 @@ public class PostService {
     private final CategoryRepository categoryRepository;
     private final PopupVerificationRepository popupVerificationRepository;
     private final FileService fileService;
+    private final PostStateResolver postStateResolver;
 
     public PostService(ExchangePostRepository exchangePostRepository,
                        PostLikeRepository postLikeRepository,
@@ -50,7 +51,8 @@ public class PostService {
                        PopupRepository popupRepository,
                        CategoryRepository categoryRepository,
                        PopupVerificationRepository popupVerificationRepository,
-                       FileService fileService) {
+                       FileService fileService,
+                       PostStateResolver postStateResolver) {
         this.exchangePostRepository = exchangePostRepository;
         this.postLikeRepository = postLikeRepository;
         this.userInterestRepository = userInterestRepository;
@@ -59,21 +61,32 @@ public class PostService {
         this.categoryRepository = categoryRepository;
         this.popupVerificationRepository = popupVerificationRepository;
         this.fileService = fileService;
+        this.postStateResolver = postStateResolver;
     }
 
-    public PostListResponse getPosts(Long popupId, Long categoryId, String status, String sort, String keyword, int page, int size, Long currentUserId) {
+    public PostListResponse getPosts(Long popupId, Long categoryId, String status, String sort, String keyword, String tab, int page, int size, Long currentUserId) {
+        String tabFilter = null;
+        if (tab != null && !tab.isBlank()) {
+            tabFilter = tab.toUpperCase();
+            if (!PostStateResolver.TAB_ONSITE.equals(tabFilter) && !PostStateResolver.TAB_GENERAL.equals(tabFilter)) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "tab은 ONSITE 또는 GENERAL이어야 합니다.");
+            }
+        }
         Sort sortOrder = Sort.by(Sort.Direction.DESC, "createdAt");
         if ("RECOMMEND".equalsIgnoreCase(sort)) {
             sortOrder = Sort.by(Sort.Direction.DESC, "createdAt");
         }
         Pageable pageable = PageRequest.of(page, size, sortOrder);
 
-        Page<ExchangePost> postPage = exchangePostRepository.findPosts(popupId, categoryId, status, keyword, pageable);
+        Page<ExchangePost> postPage = exchangePostRepository.findPosts(
+                popupId, categoryId, status, keyword, tabFilter,
+                PostStateResolver.onsiteThreshold(PostStateResolver.now()), pageable);
 
+        var states = postStateResolver.resolveAll(postPage.getContent());
         var content = postPage.getContent().stream()
                 .map(post -> {
                     boolean isLiked = currentUserId != null && postLikeRepository.existsByUserIdAndExchangePost(currentUserId, post);
-                    return PostListResponse.PostSummary.from(post, isLiked);
+                    return PostListResponse.PostSummary.from(post, isLiked, states.get(post.getPostId()));
                 })
                 .toList();
 
@@ -94,8 +107,9 @@ public class PostService {
             }
         }
 
+        var states = postStateResolver.resolveAll(posts);
         return posts.stream()
-                .map(post -> PostListResponse.PostSummary.from(post, false))
+                .map(post -> PostListResponse.PostSummary.from(post, false, states.get(post.getPostId())))
                 .toList();
     }
 
@@ -206,8 +220,9 @@ public class PostService {
                 ? exchangePostRepository.findByUserId(userId, pageable)
                 : exchangePostRepository.findByUserIdAndStatus(userId, status, pageable);
 
+        var states = postStateResolver.resolveAll(postPage.getContent());
         var content = postPage.getContent().stream()
-                .map(post -> PostListResponse.PostSummary.from(post, postLikeRepository.existsByUserIdAndExchangePost(userId, post)))
+                .map(post -> PostListResponse.PostSummary.from(post, postLikeRepository.existsByUserIdAndExchangePost(userId, post), states.get(post.getPostId())))
                 .toList();
 
         return new PostListResponse(content, postPage.getNumber(), postPage.getSize());
