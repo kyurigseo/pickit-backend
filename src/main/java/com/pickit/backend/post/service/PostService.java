@@ -158,4 +158,17 @@ public class PostService {
 
         return post.getPostId();
     }
+
+    @Transactional
+    public void deletePost(Long userId, Long postId) {
+        ExchangePost post = exchangePostRepository.findById(postId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "교환글을 찾을 수 없습니다."));
+
+        if (!post.getUserId().equals(userId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "삭제 권한이 없습니다.");
+        }
+
+        postLikeRepository.deleteByExchangePost(post);
+        exchangePostRepository.delete(post);
+    }
 }

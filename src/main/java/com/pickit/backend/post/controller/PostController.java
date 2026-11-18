@@ -10,6 +10,7 @@ import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Map;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -84,5 +85,15 @@ public class PostController {
         Long userId = (Long) authentication.getPrincipal();
         Long updatedPostId = postService.updatePost(userId, postId, request);
         return ApiResponse.success(Map.of("postId", updatedPostId));
+    }
+
+    @DeleteMapping("/{postId}")
+    public ApiResponse<Void> deletePost(
+            @PathVariable Long postId,
+            Authentication authentication
+    ) {
+        Long userId = (Long) authentication.getPrincipal();
+        postService.deletePost(userId, postId);
+        return ApiResponse.success(null);
     }
 }

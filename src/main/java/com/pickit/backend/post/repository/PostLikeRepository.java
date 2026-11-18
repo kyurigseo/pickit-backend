@@ -13,6 +13,8 @@ public interface PostLikeRepository extends JpaRepository<PostLike, Long> {
     Optional<PostLike> findByUserIdAndExchangePost(Long userId, ExchangePost exchangePost);
     boolean existsByUserIdAndExchangePost(Long userId, ExchangePost exchangePost);
 
+    void deleteByExchangePost(ExchangePost exchangePost);
+
     @Query("select l.exchangePost from PostLike l where l.userId = :userId")
     Page<ExchangePost> findLikedPostsByUserId(@Param("userId") Long userId, Pageable pageable);
 }
