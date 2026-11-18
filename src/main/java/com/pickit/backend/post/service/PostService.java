@@ -4,6 +4,7 @@ import com.pickit.backend.auth.entity.User;
 import com.pickit.backend.auth.repository.UserRepository;
 import com.pickit.backend.category.entity.Category;
 import com.pickit.backend.category.repository.CategoryRepository;
+import com.pickit.backend.common.service.FileService;
 import com.pickit.backend.interest.repository.UserInterestRepository;
 import com.pickit.backend.popup.entity.Popup;
 import com.pickit.backend.popup.repository.PopupRepository;
@@ -26,6 +27,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
@@ -39,6 +41,7 @@ public class PostService {
     private final PopupRepository popupRepository;
     private final CategoryRepository categoryRepository;
     private final PopupVerificationRepository popupVerificationRepository;
+    private final FileService fileService;
 
     public PostService(ExchangePostRepository exchangePostRepository,
                        PostLikeRepository postLikeRepository,
@@ -46,7 +49,8 @@ public class PostService {
                        UserRepository userRepository,
                        PopupRepository popupRepository,
                        CategoryRepository categoryRepository,
-                       PopupVerificationRepository popupVerificationRepository) {
+                       PopupVerificationRepository popupVerificationRepository,
+                       FileService fileService) {
         this.exchangePostRepository = exchangePostRepository;
         this.postLikeRepository = postLikeRepository;
         this.userInterestRepository = userInterestRepository;
@@ -54,6 +58,7 @@ public class PostService {
         this.popupRepository = popupRepository;
         this.categoryRepository = categoryRepository;
         this.popupVerificationRepository = popupVerificationRepository;
+        this.fileService = fileService;
     }
 
     public PostListResponse getPosts(Long popupId, Long categoryId, String status, String sort, String keyword, int page, int size, Long currentUserId) {
@@ -170,5 +175,25 @@ public class PostService {
 
         postLikeRepository.deleteByExchangePost(post);
         exchangePostRepository.delete(post);
+    }
+
+    private static final int MAX_IMAGE_COUNT = 10;
+
+    public List<String> uploadImages(List<MultipartFile> files) {
+        if (files == null || files.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "업로드할 이미지가 없습니다.");
+        }
+        if (files.size() > MAX_IMAGE_COUNT) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "이미지는 최대 " + MAX_IMAGE_COUNT + "장까지 업로드할 수 있습니다.");
+        }
+        for (MultipartFile file : files) {
+            String contentType = file.getContentType();
+            if (contentType == null || !contentType.startsWith("image/")) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "이미지 파일만 업로드할 수 있습니다.");
+            }
+        }
+        return files.stream()
+                .map(file -> fileService.storeFile(file, "posts"))
+                .toList();
     }
 }
