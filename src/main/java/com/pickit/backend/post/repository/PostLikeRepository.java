@@ -15,6 +15,7 @@ public interface PostLikeRepository extends JpaRepository<PostLike, Long> {
 
     void deleteByExchangePost(ExchangePost exchangePost);
 
-    @Query("select l.exchangePost from PostLike l where l.userId = :userId")
+    @Query(value = "select l.exchangePost from PostLike l where l.userId = :userId",
+            countQuery = "select count(l) from PostLike l where l.userId = :userId")
     Page<ExchangePost> findLikedPostsByUserId(@Param("userId") Long userId, Pageable pageable);
 }
