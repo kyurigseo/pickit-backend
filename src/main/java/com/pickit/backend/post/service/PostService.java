@@ -45,6 +45,7 @@ public class PostService {
     private final FileService fileService;
     private final PostStateResolver postStateResolver;
     private final ChatRoomRepository chatRoomRepository;
+    private final PostCountResolver postCountResolver;
 
     public PostService(ExchangePostRepository exchangePostRepository,
                        PostLikeRepository postLikeRepository,
@@ -55,7 +56,8 @@ public class PostService {
                        PopupVerificationRepository popupVerificationRepository,
                        FileService fileService,
                        PostStateResolver postStateResolver,
-                       ChatRoomRepository chatRoomRepository) {
+                       ChatRoomRepository chatRoomRepository,
+                       PostCountResolver postCountResolver) {
         this.exchangePostRepository = exchangePostRepository;
         this.postLikeRepository = postLikeRepository;
         this.userInterestRepository = userInterestRepository;
@@ -66,6 +68,7 @@ public class PostService {
         this.fileService = fileService;
         this.postStateResolver = postStateResolver;
         this.chatRoomRepository = chatRoomRepository;
+        this.postCountResolver = postCountResolver;
     }
 
     public PostListResponse getPosts(Long popupId, Long categoryId, String status, String sort, String keyword, String tab, int page, int size, Long currentUserId) {
@@ -92,10 +95,11 @@ public class PostService {
                 PostStateResolver.onsiteThreshold(PostStateResolver.now()), pageable);
 
         var states = postStateResolver.resolveAll(postPage.getContent());
+        var counts = postCountResolver.countAll(postPage.getContent());
         var content = postPage.getContent().stream()
                 .map(post -> {
                     boolean isLiked = currentUserId != null && postLikeRepository.existsByUserIdAndExchangePost(currentUserId, post);
-                    return PostListResponse.PostSummary.from(post, isLiked, states.get(post.getPostId()));
+                    return PostListResponse.PostSummary.from(post, isLiked, states.get(post.getPostId()), counts.get(post.getPostId()));
                 })
                 .toList();
 
@@ -119,8 +123,9 @@ public class PostService {
         }
 
         var states = postStateResolver.resolveAll(posts);
+        var counts = postCountResolver.countAll(posts);
         return posts.stream()
-                .map(post -> PostListResponse.PostSummary.from(post, false, states.get(post.getPostId())))
+                .map(post -> PostListResponse.PostSummary.from(post, false, states.get(post.getPostId()), counts.get(post.getPostId())))
                 .toList();
     }
 
@@ -133,7 +138,7 @@ public class PostService {
         User writer = userRepository.findById(post.getUserId()).orElse(null);
         boolean isLiked = currentUserId != null && postLikeRepository.existsByUserIdAndExchangePost(currentUserId, post);
 
-        return PostDetailResponse.of(post, writer, isLiked, state);
+        return PostDetailResponse.of(post, writer, isLiked, state, postCountResolver.count(post));
     }
 
     @Transactional
@@ -238,8 +243,10 @@ public class PostService {
                 : exchangePostRepository.findByUserIdAndStatus(userId, status, pageable);
 
         var states = postStateResolver.resolveAll(postPage.getContent());
+        var counts = postCountResolver.countAll(postPage.getContent());
         var content = postPage.getContent().stream()
-                .map(post -> PostListResponse.PostSummary.from(post, postLikeRepository.existsByUserIdAndExchangePost(userId, post), states.get(post.getPostId())))
+                .map(post -> PostListResponse.PostSummary.from(post, postLikeRepository.existsByUserIdAndExchangePost(userId, post),
+                        states.get(post.getPostId()), counts.get(post.getPostId())))
                 .toList();
 
         return new PostListResponse(content, postPage.getNumber(), postPage.getSize());
