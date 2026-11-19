@@ -2,8 +2,6 @@ package com.pickit.backend.post.service;
 
 import com.pickit.backend.auth.entity.User;
 import com.pickit.backend.auth.repository.UserRepository;
-import com.pickit.backend.category.entity.Category;
-import com.pickit.backend.category.repository.CategoryRepository;
 import com.pickit.backend.chat.repository.ChatRoomRepository;
 import com.pickit.backend.common.service.FileService;
 import com.pickit.backend.interest.repository.UserInterestRepository;
@@ -17,7 +15,6 @@ import com.pickit.backend.post.entity.ExchangePost;
 import com.pickit.backend.post.entity.PostImage;
 import com.pickit.backend.post.repository.ExchangePostRepository;
 import com.pickit.backend.post.repository.PostLikeRepository;
-import com.pickit.backend.verification.entity.PopupVerification;
 import com.pickit.backend.verification.repository.PopupVerificationRepository;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -40,7 +37,6 @@ public class PostService {
     private final UserInterestRepository userInterestRepository;
     private final UserRepository userRepository;
     private final PopupRepository popupRepository;
-    private final CategoryRepository categoryRepository;
     private final PopupVerificationRepository popupVerificationRepository;
     private final FileService fileService;
     private final PostStateResolver postStateResolver;
@@ -52,7 +48,6 @@ public class PostService {
                        UserInterestRepository userInterestRepository,
                        UserRepository userRepository,
                        PopupRepository popupRepository,
-                       CategoryRepository categoryRepository,
                        PopupVerificationRepository popupVerificationRepository,
                        FileService fileService,
                        PostStateResolver postStateResolver,
@@ -63,7 +58,6 @@ public class PostService {
         this.userInterestRepository = userInterestRepository;
         this.userRepository = userRepository;
         this.popupRepository = popupRepository;
-        this.categoryRepository = categoryRepository;
         this.popupVerificationRepository = popupVerificationRepository;
         this.fileService = fileService;
         this.postStateResolver = postStateResolver;
@@ -143,22 +137,13 @@ public class PostService {
 
     @Transactional
     public Long createPost(Long userId, CreatePostRequest request) {
-        PopupVerification verification = popupVerificationRepository.findFirstByUserIdAndPopup_PopupIdOrderByVerificationIdDesc(userId, request.popupId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "해당 팝업에 대한 위치 인증이 필요합니다."));
-
-        if (!verification.isVerifiedAt(PostStateResolver.now())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "위치 인증이 만료되었거나 유효하지 않습니다.");
-        }
-
         Popup popup = popupRepository.findById(request.popupId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "팝업을 찾을 수 없습니다."));
-        Category category = categoryRepository.findById(request.categoryId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "카테고리를 찾을 수 없습니다."));
 
         ExchangePost post = new ExchangePost(
                 userId,
                 popup,
-                category,
+                popup.getCategory(), // 카테고리는 팝업 기준으로 자동 지정
                 request.haveItemName(),
                 request.wantItemName(),
                 request.preferredLocation(),
@@ -166,7 +151,10 @@ public class PostService {
                 request.description()
         );
 
-        post.linkVerification(verification.getVerificationId());
+        // 위치 인증 없이도 작성할 수 있다. 해당 팝업 인증이 유효하면 현장(ONSITE) 글로 연결하고, 없으면 일반(GENERAL) 글이 된다.
+        popupVerificationRepository.findFirstByUserIdAndPopup_PopupIdOrderByVerificationIdDesc(userId, request.popupId())
+                .filter(v -> v.isVerifiedAt(PostStateResolver.now()))
+                .ifPresent(v -> post.linkVerification(v.getVerificationId()));
 
         if (request.imageUrls() != null) {
             for (int i = 0; i < request.imageUrls().size(); i++) {
