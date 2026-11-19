@@ -1,10 +1,10 @@
 package com.pickit.backend.config;
 
+import com.pickit.backend.auth.security.JsonAuthenticationEntryPoint;
 import com.pickit.backend.auth.security.JwtAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -12,7 +12,6 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
@@ -20,9 +19,12 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final JsonAuthenticationEntryPoint jsonAuthenticationEntryPoint;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter,
+                          JsonAuthenticationEntryPoint jsonAuthenticationEntryPoint) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.jsonAuthenticationEntryPoint = jsonAuthenticationEntryPoint;
     }
 
     @Bean
@@ -55,8 +57,9 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
                 // 토큰이 없거나 만료·위조된 요청은 403이 아니라 401로 응답해 프론트가 재로그인·토큰 재발급을 판단하게 한다.
+                // 본문은 다른 오류와 같은 { status, message, data } 형식이다.
                 .exceptionHandling(exception -> exception
-                        .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)));
+                        .authenticationEntryPoint(jsonAuthenticationEntryPoint));
 
         return http.build();
     }
