@@ -47,6 +47,18 @@ class SecurityConfigTest {
     }
 
     @Test
+    void postListWithoutTokenIsAllowed() throws Exception {
+        mockMvc.perform(get("/api/posts"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void recommendedPostsWithoutTokenReturnsUnauthorized() throws Exception {
+        mockMvc.perform(get("/api/posts/recommended"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
     void requestWithInvalidTokenReturnsUnauthorized() throws Exception {
         mockMvc.perform(get("/api/me/interests").header("Authorization", "Bearer invalid-token"))
                 .andExpect(status().isUnauthorized());

@@ -76,17 +76,10 @@ public class PostService {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "tab은 ONSITE 또는 GENERAL이어야 합니다.");
             }
         }
-        if (tabFilter == null) {
-            // 전체 교환 기준: tab을 생략하면 일반 교환글만 보여준다.
-            tabFilter = PostStateResolver.TAB_GENERAL;
-        }
-        if (PostStateResolver.TAB_ONSITE.equals(tabFilter)) {
-            if (popupId == null) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "현장 교환글은 popupId가 필요합니다.");
-            }
-            if (!postStateResolver.isVerifiedNow(currentUserId, popupId)) {
-                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "현장 교환글은 해당 팝업에서 위치 인증을 한 분만 볼 수 있습니다.");
-            }
+        // tab을 생략하면(tabFilter == null) 현장 + 일반 교환글을 모두 보여준다. ("전체 교환" 화면)
+        // 현장 교환글은 위치 인증 없이도 열람할 수 있다. (위치 인증은 글 작성에만 필요)
+        if (PostStateResolver.TAB_ONSITE.equals(tabFilter) && popupId == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "현장 교환글은 popupId가 필요합니다.");
         }
         Sort sortOrder = Sort.by(Sort.Direction.DESC, "createdAt");
         if ("RECOMMEND".equalsIgnoreCase(sort)) {
@@ -136,11 +129,6 @@ public class PostService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "교환글을 찾을 수 없습니다."));
 
         PostStateResolver.PostState state = postStateResolver.resolve(post);
-        boolean isAuthor = currentUserId != null && currentUserId.equals(post.getUserId());
-        if (PostStateResolver.TAB_ONSITE.equals(state.tab()) && !isAuthor
-                && !postStateResolver.isVerifiedNow(currentUserId, post.getPopup().getPopupId())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "현장 교환글은 해당 팝업에서 위치 인증을 한 분만 볼 수 있습니다.");
-        }
 
         User writer = userRepository.findById(post.getUserId()).orElse(null);
         boolean isLiked = currentUserId != null && postLikeRepository.existsByUserIdAndExchangePost(currentUserId, post);
